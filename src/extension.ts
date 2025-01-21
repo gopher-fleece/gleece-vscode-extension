@@ -19,6 +19,7 @@ enum Annotation {
 interface AnnotationValidOptions {
     options?: string[];
     paramValidator?: (param: string) => boolean;
+    hasDescription: boolean;
 }
 
 function isValidInteger(str: string): boolean {
@@ -44,34 +45,41 @@ function isValidPath(path: string): boolean {
 
     // Regular expression to validate the path
     const pathRegex = /^\/(?:[a-zA-Z0-9-_]+|\{[a-zA-Z0-9-_]+\})(?:\/(?:[a-zA-Z0-9-_]+|\{[a-zA-Z0-9-_]+\}))*$/;
-    
+
     return pathRegex.test(path);
 }
 
 const annotationValidOptions: { [key in Annotation]: AnnotationValidOptions } = {
     [Annotation.Method]: {
         paramValidator: (param: string) => ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].includes(param),
+        hasDescription: false,
     },
     [Annotation.Route]: {
         paramValidator: (param: string) => isValidPath(param),
+        hasDescription: false,
     },
     [Annotation.Tag]: {
+        hasDescription: false,
     },
     [Annotation.Query]: {
         options: ['validate', 'name'],
         paramValidator: (param: string) => param.indexOf(' ') === -1,
+        hasDescription: true,
     },
     [Annotation.Path]: {
         options: ['validate', 'name'],
         paramValidator: (param: string) => param.indexOf(' ') === -1,
+        hasDescription: true,
     },
     [Annotation.Body]: {
         options: ['validate', 'name'],
         paramValidator: (param: string) => param.indexOf(' ') === -1,
+        hasDescription: true,
     },
     [Annotation.Header]: {
         options: ['validate', 'name'],
         paramValidator: (param: string) => param.indexOf(' ') === -1,
+        hasDescription: true,
     },
     [Annotation.Response]: {
         paramValidator: (param: string) => {
@@ -81,6 +89,7 @@ const annotationValidOptions: { [key in Annotation]: AnnotationValidOptions } = 
             const num = parseInt(param, 10);
             return num >= 100 && num < 400
         },
+        hasDescription: true,
     },
     [Annotation.ErrorResponse]: {
         paramValidator: (param: string) => {
@@ -90,16 +99,21 @@ const annotationValidOptions: { [key in Annotation]: AnnotationValidOptions } = 
             const num = parseInt(param, 10);
             return num >= 400 && num < 600
         },
+        hasDescription: true,
     },
     [Annotation.Description]: {
+        hasDescription: true,
     },
     [Annotation.Deprecated]: {
+        hasDescription: false,
     },
     [Annotation.Security]: {
         options: ['scopes'],
         paramValidator: (param: string) => param.indexOf(' ') === -1,
+        hasDescription: false,
     },
 }
+
 // Create decoration types at the top level
 const decorationTypes = {
     annotation: vscode.window.createTextEditorDecorationType({
@@ -120,6 +134,10 @@ const decorationTypes = {
         color: '#e34d1b',
     }),
     description: vscode.window.createTextEditorDecorationType({
+        color: '#0b72b5',
+        fontStyle: 'italic'
+    }),
+    comment: vscode.window.createTextEditorDecorationType({
         color: '#808080',
         fontStyle: 'italic'
     }),
@@ -180,6 +198,7 @@ export function activate(context: vscode.ExtensionContext) {
         const optionsDecorations: vscode.DecorationOptions[] = [];
         const invalidOptionsDecorations: vscode.DecorationOptions[] = [];
         const descriptionDecorations: vscode.DecorationOptions[] = [];
+        const commentDecorations: vscode.DecorationOptions[] = [];
         const parenthesesDecorations: vscode.DecorationOptions[] = [];
         const commentSlashesDecorations: vscode.DecorationOptions[] = [];
 
@@ -194,7 +213,6 @@ export function activate(context: vscode.ExtensionContext) {
             if (!Object.values(Annotation).includes(annotation as Annotation)) {
                 return;
             }
-
 
             const lineStart = line.indexOf(annotation);
             if (lineStart === -1) return;
@@ -212,13 +230,14 @@ export function activate(context: vscode.ExtensionContext) {
             );
             annotationDecorations.push({ range: annotationRange });
 
-            const annotationLeftText = line.split(annotation)?.[1]?.trim() || '';
+            const annotationLeftText = line.substring(lineStart + annotation.length).trim();
             let description = '';
             let annotationArgs = '';
             let annotationParam = '';
             let annotationOptions = '';
 
             if (annotationLeftText.startsWith('(')) {
+                // Handle case with parentheses
                 const openParenIndex = line.indexOf('(', lineStart);
                 if (openParenIndex !== -1) {
                     const openParenRange = new vscode.Range(
@@ -235,29 +254,13 @@ export function activate(context: vscode.ExtensionContext) {
                         new vscode.Position(lineIndex, closeParenIndex + 1)
                     );
                     parenthesesDecorations.push({ range: closeParenRange });
-                }
 
-                if (!annotationLeftText.startsWith('(')) {
-                    description = line.split(annotation)[1]?.trim() || '';
-                    if (description) {
-                        const descStart = line.indexOf(description);
-                        const descRange = new vscode.Range(
-                            new vscode.Position(lineIndex, descStart),
-                            new vscode.Position(lineIndex, descStart + description.length)
-                        );
-                        descriptionDecorations.push({ range: descRange });
-                    }
-                } else {
-                    annotationArgs = annotationLeftText.split(')')[0].trim();
-                    if (annotationArgs.startsWith('(')) {
-                        annotationArgs = annotationArgs.split('(')[1]?.trim() || '';
-                    }
+                    annotationArgs = line.substring(openParenIndex + 1, closeParenIndex).trim();
                     const argsPars = splitByFirstComma(annotationArgs, ",");
                     annotationParam = argsPars[0]?.trim() || '';
                     annotationOptions = argsPars[1]?.trim() || '';
 
                     if (annotationParam) {
-
                         const validOptions = annotationValidOptions[annotation].paramValidator?.(annotationParam) ?? true;
                         const paramStart = line.indexOf(annotationParam);
                         const paramRange = new vscode.Range(
@@ -265,18 +268,14 @@ export function activate(context: vscode.ExtensionContext) {
                             new vscode.Position(lineIndex, paramStart + annotationParam.length)
                         );
                         if (!validOptions) {
-                            // Add invalid options decoration
                             invalidOptionsDecorations.push({ range: paramRange });
                         } else {
-                            // Add valid options decoration
                             parameterDecorations.push({ range: paramRange });
                         }
                     }
 
                     if (annotationOptions) {
-                        // Parse options as JSON5 if present
-                        const validOptions = parseOptions(annotation, annotationOptions);;
-
+                        const validOptions = parseOptions(annotation, annotationOptions);
                         const optStart = line.indexOf(annotationOptions);
                         const optRange = new vscode.Range(
                             new vscode.Position(lineIndex, optStart),
@@ -284,23 +283,31 @@ export function activate(context: vscode.ExtensionContext) {
                         );
 
                         if (!validOptions) {
-                            // Add invalid options decoration
                             invalidOptionsDecorations.push({ range: optRange });
                         } else {
-                            // Add valid options decoration
                             optionsDecorations.push({ range: optRange });
                         }
                     }
 
-                    description = line.split(annotationArgs + ')')[1]?.trim() || '';
-                    if (description) {
-                        const descStart = line.indexOf(description);
-                        const descRange = new vscode.Range(
-                            new vscode.Position(lineIndex, descStart),
-                            new vscode.Position(lineIndex, descStart + description.length)
-                        );
-                        descriptionDecorations.push({ range: descRange });
-                    }
+                    // Get description after closing parenthesis
+                    description = line.substring(closeParenIndex + 1).trim();
+                }
+            } else {
+                // No parentheses - treat everything after annotation as description
+                description = annotationLeftText;
+            }
+
+            // Add description decoration if there is any description text
+            if (description) {
+                const descStart = line.indexOf(description);
+                const descRange = new vscode.Range(
+                    new vscode.Position(lineIndex, descStart),
+                    new vscode.Position(lineIndex, descStart + description.length)
+                );
+                if (annotationValidOptions[annotation].hasDescription) {
+                    descriptionDecorations.push({ range: descRange });
+                } else {
+                    commentDecorations.push({ range: descRange });
                 }
             }
         });
@@ -311,6 +318,7 @@ export function activate(context: vscode.ExtensionContext) {
         activeEditor.setDecorations(decorationTypes.options, optionsDecorations);
         activeEditor.setDecorations(decorationTypes.invalidOptions, invalidOptionsDecorations);
         activeEditor.setDecorations(decorationTypes.description, descriptionDecorations);
+        activeEditor.setDecorations(decorationTypes.comment, commentDecorations);
         activeEditor.setDecorations(decorationTypes.parentheses, parenthesesDecorations);
         activeEditor.setDecorations(decorationTypes.commentSlashes, commentSlashesDecorations);
     }
