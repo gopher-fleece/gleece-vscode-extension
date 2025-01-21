@@ -19,10 +19,11 @@ A powerful Visual Studio Code extension designed to enhance your Gleece API deve
 
 Gleece is a powerful Go framework that simplifies API development through intuitive annotations. It provides a structured approach to building robust and maintainable APIs in Go. For more information about Gleece and its capabilities, visit the [Gleece project repository](https://github.com/gopher-fleece/gleece).
 
-## 🚀 Highlighting Example
+## 🚀 Highlighting
 
-Before:
-![Screenshot](https://raw.githubusercontent.com/gophar-fleece/gleece-vscode-extension/main/docs/resources/before.jpg)
+## With Gleece Extension
+![Screenshot](https://raw.githubusercontent.com/gopher-fleece/gleece-vscode-extension/refs/heads/main/resources/after.png)
 
-After:
-![Screenshot](https://raw.githubusercontent.com/gophar-fleece/gleece-vscode-extension/main/docs/resources/after.jpg)
+## Without Gleece Extension
+![Screenshot](https://raw.githubusercontent.com/gopher-fleece/gleece-vscode-extension/refs/heads/main/resources/before.png)
+
