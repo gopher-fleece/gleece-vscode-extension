@@ -3,6 +3,13 @@
   "displayName": "Gleece",
   "description": "The Gleece extension for Visual Studio Code",
   "version": "0.0.1",
+  "publisher": "haim-kastner",
+  "author": {
+    "name": "Haim Kastner",
+    "email": "hello@haim-kastner.com"
+  },
+  "icon": "resources/logo.jpg",
+  "license": "MIT",
   "engines": {
     "vscode": "^1.71.0"
   },
