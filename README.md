@@ -1,2 +1,3 @@
-# gleece-vscode-extention
-The VSCode extention for Gleece development
+## Gleece Extension
+
+The VSCode extension for Gleece development

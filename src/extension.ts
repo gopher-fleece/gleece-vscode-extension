@@ -1,0 +1,236 @@
+import * as vscode from 'vscode';
+import JSON5 from 'json5';
+
+enum Annotation {
+    Method = '@Method',
+    Route = '@Route',
+    Tag = '@Tag',
+    Query = '@Query',
+    Path = '@Path',
+    Body = '@Body',
+    Header = '@Header',
+    Response = '@Response',
+    ErrorResponse = '@ErrorResponse',
+    Description = '@Description',
+    Deprecated = '@Deprecated',
+    Security = '@Security',
+}
+
+// Create decoration types at the top level
+const decorationTypes = {
+    annotation: vscode.window.createTextEditorDecorationType({
+        color: '#00BCD4',
+        fontWeight: 'bold'
+    }),
+    parentheses: vscode.window.createTextEditorDecorationType({
+        color: '#00BCD4',
+        fontWeight: 'bold'
+    }),
+    parameter: vscode.window.createTextEditorDecorationType({
+        color: '#09d67a',
+    }),
+    options: vscode.window.createTextEditorDecorationType({
+        color: '#0b7b8a',
+    }),
+    invalidOptions: vscode.window.createTextEditorDecorationType({
+        color: '#e34d1b',
+    }),
+    description: vscode.window.createTextEditorDecorationType({
+        color: '#808080',
+        fontStyle: 'italic'
+    }),
+    commentSlashes: vscode.window.createTextEditorDecorationType({
+        color: '#808080',
+        fontWeight: 'bold'
+    })
+};
+
+function splitByFirstComma(input: string, splitter: string): [string, string] {
+    const index = input.indexOf(splitter);
+    if (index === -1) {
+        return [input, ''];
+    }
+    return [
+        input.slice(0, index),
+        input.slice(index + 1)
+    ];
+}
+
+// Add this function to parse JSON5 options
+function parseOptions(optionsString: string): boolean {
+    try {
+        const results = JSON5.parse(optionsString);
+        return !Array.isArray(results);
+    } catch (error) {
+        return false;
+    }
+}
+
+export function activate(context: vscode.ExtensionContext) {
+    let activeEditor = vscode.window.activeTextEditor;
+
+    function updateDecorations() {
+        if (!activeEditor) {
+            return;
+        }
+
+        if (!activeEditor.document.fileName.endsWith('.go')) {
+            return;
+        }
+
+        const text = activeEditor.document.getText();
+        const lines = text.split('\n');
+
+        const annotationDecorations: vscode.DecorationOptions[] = [];
+        const parameterDecorations: vscode.DecorationOptions[] = [];
+        const optionsDecorations: vscode.DecorationOptions[] = [];
+        const invalidOptionsDecorations: vscode.DecorationOptions[] = [];
+        const descriptionDecorations: vscode.DecorationOptions[] = [];
+        const parenthesesDecorations: vscode.DecorationOptions[] = [];
+        const commentSlashesDecorations: vscode.DecorationOptions[] = [];
+
+        lines.forEach((line, lineIndex) => {
+            if (!line?.trimStart()?.startsWith('//')) {
+                return;
+            }
+
+            const commentText = line.split('//')[1].trim();
+            const annotation = commentText?.split('(')?.[0]?.split(' ')?.[0] as Annotation;
+
+            if (!Object.values(Annotation).includes(annotation as Annotation)) {
+                return;
+            }
+
+            
+            const lineStart = line.indexOf(annotation);
+            if (lineStart === -1) return;
+
+            const slashesStart = line.indexOf('//');
+            const slashesRange = new vscode.Range(
+                new vscode.Position(lineIndex, slashesStart),
+                new vscode.Position(lineIndex, slashesStart + 2)
+            );
+            commentSlashesDecorations.push({ range: slashesRange });
+
+            const annotationRange = new vscode.Range(
+                new vscode.Position(lineIndex, lineStart),
+                new vscode.Position(lineIndex, lineStart + annotation.length)
+            );
+            annotationDecorations.push({ range: annotationRange });
+
+            const annotationLeftText = line.split(annotation)?.[1]?.trim() || '';
+            let description = '';
+            let annotationArgs = '';
+            let annotationParam = '';
+            let annotationOptions = '';
+
+            if (annotationLeftText.startsWith('(')) {
+                const openParenIndex = line.indexOf('(', lineStart);
+                if (openParenIndex !== -1) {
+                    const openParenRange = new vscode.Range(
+                        new vscode.Position(lineIndex, openParenIndex),
+                        new vscode.Position(lineIndex, openParenIndex + 1)
+                    );
+                    parenthesesDecorations.push({ range: openParenRange });
+                }
+
+                const closeParenIndex = line.indexOf(')', openParenIndex);
+                if (closeParenIndex !== -1) {
+                    const closeParenRange = new vscode.Range(
+                        new vscode.Position(lineIndex, closeParenIndex),
+                        new vscode.Position(lineIndex, closeParenIndex + 1)
+                    );
+                    parenthesesDecorations.push({ range: closeParenRange });
+                }
+
+                if (!annotationLeftText.startsWith('(')) {
+                    description = line.split(annotation)[1]?.trim() || '';
+                    if (description) {
+                        const descStart = line.indexOf(description);
+                        const descRange = new vscode.Range(
+                            new vscode.Position(lineIndex, descStart),
+                            new vscode.Position(lineIndex, descStart + description.length)
+                        );
+                        descriptionDecorations.push({ range: descRange });
+                    }
+                } else {
+                    annotationArgs = annotationLeftText.split(')')[0].trim();
+                    if (annotationArgs.startsWith('(')) {
+                        annotationArgs = annotationArgs.split('(')[1]?.trim() || '';
+                    }
+                    const argsPars = splitByFirstComma(annotationArgs, ",");
+                    annotationParam = argsPars[0]?.trim() || '';
+                    annotationOptions = argsPars[1]?.trim() || '';
+
+                    if (annotationParam) {
+                        const paramStart = line.indexOf(annotationParam);
+                        const paramRange = new vscode.Range(
+                            new vscode.Position(lineIndex, paramStart),
+                            new vscode.Position(lineIndex, paramStart + annotationParam.length)
+                        );
+                        parameterDecorations.push({ range: paramRange });
+                    }
+
+                    if (annotationOptions) {
+                        // Parse options as JSON5 if present
+                        const validOptions = parseOptions(annotationOptions);;
+
+                        const optStart = line.indexOf(annotationOptions);
+                        const optRange = new vscode.Range(
+                            new vscode.Position(lineIndex, optStart),
+                            new vscode.Position(lineIndex, optStart + annotationOptions.length)
+                        );
+
+                        if (!validOptions) {
+                            // Add invalid options decoration
+                            invalidOptionsDecorations.push({ range: optRange });
+                        } else {
+                            // Add valid options decoration
+                            optionsDecorations.push({ range: optRange });
+                        }
+                    }
+
+                    description = line.split(annotationArgs + ')')[1]?.trim() || '';
+                    if (description) {
+                        const descStart = line.indexOf(description);
+                        const descRange = new vscode.Range(
+                            new vscode.Position(lineIndex, descStart),
+                            new vscode.Position(lineIndex, descStart + description.length)
+                        );
+                        descriptionDecorations.push({ range: descRange });
+                    }
+                }
+            }
+        });
+
+        // Apply all decorations
+        activeEditor.setDecorations(decorationTypes.annotation, annotationDecorations);
+        activeEditor.setDecorations(decorationTypes.parameter, parameterDecorations);
+        activeEditor.setDecorations(decorationTypes.options, optionsDecorations);
+        activeEditor.setDecorations(decorationTypes.invalidOptions, invalidOptionsDecorations);
+        activeEditor.setDecorations(decorationTypes.description, descriptionDecorations);
+        activeEditor.setDecorations(decorationTypes.parentheses, parenthesesDecorations);
+        activeEditor.setDecorations(decorationTypes.commentSlashes, commentSlashesDecorations);
+    }
+
+    if (activeEditor) {
+        updateDecorations();
+    }
+
+    vscode.window.onDidChangeActiveTextEditor(editor => {
+        activeEditor = editor;
+        if (editor) {
+            updateDecorations();
+        }
+    }, null, context.subscriptions);
+
+    vscode.workspace.onDidChangeTextDocument(event => {
+        if (activeEditor && event.document === activeEditor.document) {
+            updateDecorations();
+        }
+    }, null, context.subscriptions);
+}
+
+export function deactivate() {
+    Object.values(decorationTypes).forEach(decoration => decoration.dispose());
+}
