@@ -16,6 +16,90 @@ enum Annotation {
     Security = '@Security',
 }
 
+interface AnnotationValidOptions {
+    options?: string[];
+    paramValidator?: (param: string) => boolean;
+}
+
+function isValidInteger(str: string): boolean {
+    return /^-?\d+$/.test(str);
+}
+
+function isValidPath(path: string): boolean {
+    // Basic validation rules:
+    // 1. Must start with a forward slash
+    // 2. Can contain multiple segments separated by forward slashes
+    // 3. Can contain parameters in curly braces
+    // 4. Can't have consecutive forward slashes
+    // 5. Can't end with a forward slash (optional, remove if needed)
+
+    // If the path is empty or doesn't start with a slash, it's invalid
+    if (!path || !path.startsWith('/')) return false;
+
+    // Check for consecutive slashes
+    if (path.includes('//')) return false;
+
+    // Remove trailing slash for validation (optional, remove if you want to allow trailing slashes)
+    path = path.endsWith('/') ? path.slice(0, -1) : path;
+
+    // Regular expression to validate the path
+    const pathRegex = /^\/(?:[a-zA-Z0-9-_]+|\{[a-zA-Z0-9-_]+\})(?:\/(?:[a-zA-Z0-9-_]+|\{[a-zA-Z0-9-_]+\}))*$/;
+    
+    return pathRegex.test(path);
+}
+
+const annotationValidOptions: { [key in Annotation]: AnnotationValidOptions } = {
+    [Annotation.Method]: {
+        paramValidator: (param: string) => ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].includes(param),
+    },
+    [Annotation.Route]: {
+        paramValidator: (param: string) => isValidPath(param),
+    },
+    [Annotation.Tag]: {
+    },
+    [Annotation.Query]: {
+        options: ['validate', 'name'],
+        paramValidator: (param: string) => param.indexOf(' ') === -1,
+    },
+    [Annotation.Path]: {
+        options: ['validate', 'name'],
+        paramValidator: (param: string) => param.indexOf(' ') === -1,
+    },
+    [Annotation.Body]: {
+        options: ['validate', 'name'],
+        paramValidator: (param: string) => param.indexOf(' ') === -1,
+    },
+    [Annotation.Header]: {
+        options: ['validate', 'name'],
+        paramValidator: (param: string) => param.indexOf(' ') === -1,
+    },
+    [Annotation.Response]: {
+        paramValidator: (param: string) => {
+            if (!isValidInteger(param)) {
+                return false;
+            }
+            const num = parseInt(param, 10);
+            return num >= 100 && num < 400
+        },
+    },
+    [Annotation.ErrorResponse]: {
+        paramValidator: (param: string) => {
+            if (!isValidInteger(param)) {
+                return false;
+            }
+            const num = parseInt(param, 10);
+            return num >= 400 && num < 600
+        },
+    },
+    [Annotation.Description]: {
+    },
+    [Annotation.Deprecated]: {
+    },
+    [Annotation.Security]: {
+        options: ['scopes'],
+        paramValidator: (param: string) => param.indexOf(' ') === -1,
+    },
+}
 // Create decoration types at the top level
 const decorationTypes = {
     annotation: vscode.window.createTextEditorDecorationType({
@@ -57,10 +141,20 @@ function splitByFirstComma(input: string, splitter: string): [string, string] {
 }
 
 // Add this function to parse JSON5 options
-function parseOptions(optionsString: string): boolean {
+function parseOptions(annotation: Annotation, optionsString: string): boolean {
     try {
         const results = JSON5.parse(optionsString);
-        return !Array.isArray(results);
+
+        if (Array.isArray(results)) {
+            return false;
+        }
+
+        for (const optionsKey of Object.keys(results)) {
+            if (!annotationValidOptions[annotation].options?.includes(optionsKey)) {
+                return false;
+            }
+        }
+        return true;
     } catch (error) {
         return false;
     }
@@ -101,7 +195,7 @@ export function activate(context: vscode.ExtensionContext) {
                 return;
             }
 
-            
+
             const lineStart = line.indexOf(annotation);
             if (lineStart === -1) return;
 
@@ -163,17 +257,25 @@ export function activate(context: vscode.ExtensionContext) {
                     annotationOptions = argsPars[1]?.trim() || '';
 
                     if (annotationParam) {
+
+                        const validOptions = annotationValidOptions[annotation].paramValidator?.(annotationParam) ?? true;
                         const paramStart = line.indexOf(annotationParam);
                         const paramRange = new vscode.Range(
                             new vscode.Position(lineIndex, paramStart),
                             new vscode.Position(lineIndex, paramStart + annotationParam.length)
                         );
-                        parameterDecorations.push({ range: paramRange });
+                        if (!validOptions) {
+                            // Add invalid options decoration
+                            invalidOptionsDecorations.push({ range: paramRange });
+                        } else {
+                            // Add valid options decoration
+                            parameterDecorations.push({ range: paramRange });
+                        }
                     }
 
                     if (annotationOptions) {
                         // Parse options as JSON5 if present
-                        const validOptions = parseOptions(annotationOptions);;
+                        const validOptions = parseOptions(annotation, annotationOptions);;
 
                         const optStart = line.indexOf(annotationOptions);
                         const optRange = new vscode.Range(
