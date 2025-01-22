@@ -243,6 +243,8 @@ export function activate(context: vscode.ExtensionContext) {
             let annotationOptions = '';
 
             if (annotationLeftText.startsWith('(')) {
+
+                const invalidParentheses = annotationLeftText.startsWith('()');
                 // Handle case with parentheses
                 const openParenIndex = line.indexOf('(', lineStart);
                 if (openParenIndex !== -1) {
@@ -250,7 +252,12 @@ export function activate(context: vscode.ExtensionContext) {
                         new vscode.Position(lineIndex, openParenIndex),
                         new vscode.Position(lineIndex, openParenIndex + 1)
                     );
-                    parenthesesDecorations.push({ range: openParenRange });
+
+                    if (invalidParentheses) {
+                        invalidOptionsDecorations.push({ range: openParenRange });
+                    } else {
+                        parenthesesDecorations.push({ range: openParenRange });
+                    }
                 }
 
                 const closeParenIndex = line.indexOf(')', openParenIndex);
@@ -259,7 +266,11 @@ export function activate(context: vscode.ExtensionContext) {
                         new vscode.Position(lineIndex, closeParenIndex),
                         new vscode.Position(lineIndex, closeParenIndex + 1)
                     );
-                    parenthesesDecorations.push({ range: closeParenRange });
+                    if (invalidParentheses) {
+                        invalidOptionsDecorations.push({ range: closeParenRange });
+                    } else {
+                        parenthesesDecorations.push({ range: closeParenRange });
+                    }
 
                     annotationArgs = line.substring(openParenIndex + 1, closeParenIndex).trim();
                     const argsPars = splitByFirstComma(annotationArgs, ",");
