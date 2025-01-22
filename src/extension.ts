@@ -2,18 +2,18 @@ import * as vscode from 'vscode';
 import JSON5 from 'json5';
 
 enum Annotation {
-    Method = '@Method',
-    Route = '@Route',
-    Tag = '@Tag',
-    Query = '@Query',
-    Path = '@Path',
-    Body = '@Body',
-    Header = '@Header',
-    Response = '@Response',
-    ErrorResponse = '@ErrorResponse',
-    Description = '@Description',
-    Deprecated = '@Deprecated',
-    Security = '@Security',
+    method = '@Method',
+    route = '@Route',
+    tag = '@Tag',
+    query = '@Query',
+    path = '@Path',
+    body = '@Body',
+    header = '@Header',
+    response = '@Response',
+    errorResponse = '@ErrorResponse',
+    description = '@Description',
+    deprecated = '@Deprecated',
+    security = '@Security',
 }
 
 interface AnnotationValidOptions {
@@ -35,10 +35,14 @@ function isValidPath(path: string): boolean {
     // 5. Can't end with a forward slash (optional, remove if needed)
 
     // If the path is empty or doesn't start with a slash, it's invalid
-    if (!path || !path.startsWith('/')) return false;
+    if (!path || !path.startsWith('/')) {
+        return false;
+    }
 
     // Check for consecutive slashes
-    if (path.includes('//')) return false;
+    if (path.includes('//')) {
+        return false;
+    }
 
     // Remove trailing slash for validation (optional, remove if you want to allow trailing slashes)
     path = path.endsWith('/') ? path.slice(0, -1) : path;
@@ -50,69 +54,69 @@ function isValidPath(path: string): boolean {
 }
 
 const annotationValidOptions: { [key in Annotation]: AnnotationValidOptions } = {
-    [Annotation.Method]: {
+    [Annotation.method]: {
         paramValidator: (param: string) => ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].includes(param),
         hasDescription: false,
     },
-    [Annotation.Route]: {
+    [Annotation.route]: {
         paramValidator: (param: string) => isValidPath(param),
         hasDescription: false,
     },
-    [Annotation.Tag]: {
+    [Annotation.tag]: {
         hasDescription: false,
     },
-    [Annotation.Query]: {
+    [Annotation.query]: {
         options: ['validate', 'name'],
         paramValidator: (param: string) => param.indexOf(' ') === -1,
         hasDescription: true,
     },
-    [Annotation.Path]: {
+    [Annotation.path]: {
         options: ['validate', 'name'],
         paramValidator: (param: string) => param.indexOf(' ') === -1,
         hasDescription: true,
     },
-    [Annotation.Body]: {
+    [Annotation.body]: {
         options: ['validate', 'name'],
         paramValidator: (param: string) => param.indexOf(' ') === -1,
         hasDescription: true,
     },
-    [Annotation.Header]: {
+    [Annotation.header]: {
         options: ['validate', 'name'],
         paramValidator: (param: string) => param.indexOf(' ') === -1,
         hasDescription: true,
     },
-    [Annotation.Response]: {
+    [Annotation.response]: {
         paramValidator: (param: string) => {
             if (!isValidInteger(param)) {
                 return false;
             }
             const num = parseInt(param, 10);
-            return num >= 100 && num < 400
+            return num >= 100 && num < 400;
         },
         hasDescription: true,
     },
-    [Annotation.ErrorResponse]: {
+    [Annotation.errorResponse]: {
         paramValidator: (param: string) => {
             if (!isValidInteger(param)) {
                 return false;
             }
             const num = parseInt(param, 10);
-            return num >= 400 && num < 600
+            return num >= 400 && num < 600;
         },
         hasDescription: true,
     },
-    [Annotation.Description]: {
+    [Annotation.description]: {
         hasDescription: true,
     },
-    [Annotation.Deprecated]: {
+    [Annotation.deprecated]: {
         hasDescription: false,
     },
-    [Annotation.Security]: {
+    [Annotation.security]: {
         options: ['scopes'],
         paramValidator: (param: string) => param.indexOf(' ') === -1,
         hasDescription: false,
     },
-}
+};
 
 // Create decoration types at the top level
 const decorationTypes = {
@@ -215,7 +219,9 @@ export function activate(context: vscode.ExtensionContext) {
             }
 
             const lineStart = line.indexOf(annotation);
-            if (lineStart === -1) return;
+            if (lineStart === -1) {
+                return;
+            }
 
             const slashesStart = line.indexOf('//');
             const slashesRange = new vscode.Range(

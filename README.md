@@ -1,6 +1,7 @@
 ![Screenshot](https://raw.githubusercontent.com/gophar-fleece/.github/main/docs/images/logo-wide.jpg)
 ## Gleece Extension
 
+[![Build and Release](https://github.com/gopher-fleece/gleece-vscode-extension/actions/workflows/build.yaml/badge.svg?branch=main)](https://github.com/gopher-fleece/gleece-vscode-extension/actions/workflows/build.yaml)
 [![Version](https://img.shields.io/visual-studio-marketplace/v/haim-kastner.gleece-extension)](https://marketplace.visualstudio.com/items?itemName=haim-kastner.gleece-extension)
 [![Downloads](https://img.shields.io/visual-studio-marketplace/d/haim-kastner.gleece-extension)](https://marketplace.visualstudio.com/items?itemName=haim-kastner.gleece-extension)
 [![License](https://img.shields.io/github/license/gopher-fleece/gleece-vscode-extension)](LICENSE)
