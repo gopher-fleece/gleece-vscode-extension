@@ -1,0 +1,76 @@
+name: Build and Release
+
+on:
+  # Run on any branch push
+  push:
+    branches:
+      - '**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0 # Important for versioning
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Lint
+      run: npm run lint
+
+    - name: Build
+      run: npm run package
+
+    - name: Create VSIX
+      run: npm run vscode:package
+
+    # Upload artifact for all branches
+    - name: Upload Extension Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: gleece-extension-${{ github.sha }}
+        path: "*.vsix"
+        retention-days: 5 # Keep artifacts for 5 days
+
+    # Version bump and release only on main branch
+    - name: Bump version and push tag
+      if: github.ref == 'refs/heads/main'
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        # Get current version from package.json
+        CURRENT_VERSION=$(node -p "require('./package.json').version")
+        # Split version into components
+        IFS='.' read -ra VERSION_PARTS <<< "$CURRENT_VERSION"
+        # Increment patch version
+        NEW_PATCH=$((VERSION_PARTS[2] + 1))
+        NEW_VERSION="${VERSION_PARTS[0]}.${VERSION_PARTS[1]}.$NEW_PATCH"
+        # Update package.json
+        npm version $NEW_VERSION --no-git-tag-version
+        # Create new tag
+        git add package.json
+        git commit -m "Bump version to $NEW_VERSION [skip ci]"
+        echo "NEW_VERSION=${NEW_VERSION}" >> $GITHUB_ENV
+        git tag "v$NEW_VERSION"
+        git push
+        git push --tags
+
+    - name: Create Release
+      if: github.ref == 'refs/heads/main'
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      uses: softprops/action-gh-release@v1
+      with:
+        files: "*.vsix"
+        tag_name: v${{ env.NEW_VERSION }}
+        name: Release v${{ env.NEW_VERSION }}
+        generate_release_notes: true
