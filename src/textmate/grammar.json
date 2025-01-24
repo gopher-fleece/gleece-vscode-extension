@@ -1,0 +1,29 @@
+{
+	"scopeName": "gleece-annotations.injection",
+	"injectionSelector": "L:comment.line.double-slash",
+	"patterns": [
+		{
+			"include": "#annotation-tag-statement"
+		}
+	],
+	"repository": {
+		"annotation-tag-statement": {
+			"match": "(@(?:Tag|Query|Path|Body|Header|Deprecated|Hidden|Security|AdvancedSecurity|Route|Response|Description|Method|ErrorResponse))(?:(?:\\(([\\w\\-_/\\{\\} ]+))(?:\\s*,\\s*(\\{.*\\}))?\\))?(?:\\s+(.+))?",
+			"captures": {
+				"1": {
+					"name": "entity.name.function.gleece.annotation.name"
+				},
+				"2": {
+					"name": "constant.numeric.gleece.annotation.value"
+				},
+				"3": {
+					"name": "variable.other.property.gleece.annotation.config"
+				},
+				"4": {
+					"name": "comment.line.double-slash.gleece.annotation.description"
+				}
+			},
+			"name": "keyword.gleece.annotation"
+		}
+	}
+}
