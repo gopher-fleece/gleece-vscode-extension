@@ -1,7 +1,7 @@
 import json5 from "json5";
 import { AttributeNames } from './enums';
 
-interface Attribute {
+export interface Attribute {
 	name: string;
 	value?: string; // Optional, corresponds to the primary value inside parentheses
 	properties?: Record<string, any>; // Parsed JSON5 properties
@@ -15,6 +15,10 @@ export class AttributesProvider {
 
 	constructor(comments: string[]) {
 		this.parseComments(comments);
+	}
+
+	public isEmpty(): boolean {
+		return !(this.attributes?.length > 0) && !(this.nonAttributeComments.size > 0);
 	}
 
 	// Public method to get the parsed attributes
