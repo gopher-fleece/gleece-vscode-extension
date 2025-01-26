@@ -19,6 +19,7 @@ export interface Attribute {
 
 	properties?: Record<string, any>; // Parsed JSON5 properties
 	propertiesRange?: Range;
+	propertiesParseError?: unknown;
 
 	description?: string; // Additional text after the annotation
 	descriptionRange?: Range;
@@ -74,9 +75,9 @@ export class AttributesProvider {
 		for (const attrib of this.attributes) {
 			const validator = Validators[attrib.name as AttributeNames];
 			if (validator) {
-				const err = validator(attrib);
-				if (err) {
-					errors.push(err);
+				const validationErrors = validator(attrib);
+				if (validationErrors) {
+					errors.push(...validationErrors);
 				}
 			}
 		}
@@ -126,12 +127,12 @@ export class AttributesProvider {
 		const descriptionGroup = groupsWithIndexes[3];   // The remaining TEXT (e.g., some description)
 
 		let props: Record<string, any> | undefined;
+		let jsonError: unknown;
 		if (propertiesGroup?.match) {
 			try {
 				props = json5.parse(propertiesGroup.match);
 			} catch (err) {
-				// Need to reflect this error to state!
-				return { attribute: null, isAttribute: true, error: new Error(`Invalid JSON5 in annotation: ${propertiesGroup.match}`) };
+				jsonError = err;
 			}
 		}
 
@@ -144,6 +145,7 @@ export class AttributesProvider {
 			valueRange: valueGroup ? new Range(lineNumber, valueGroup.start, lineNumber, valueGroup.end) : undefined,
 			properties: props,
 			propertiesRange: propertiesGroup ? new Range(lineNumber, propertiesGroup.start, lineNumber, propertiesGroup.end) : undefined,
+			propertiesParseError: jsonError,
 			description: descriptionGroup?.match,
 			descriptionRange: descriptionGroup ? new Range(lineNumber, descriptionGroup.start, lineNumber, descriptionGroup.end) : undefined,
 		};
