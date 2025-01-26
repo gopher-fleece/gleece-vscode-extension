@@ -1,37 +1,48 @@
-import { TextDocument, Position } from 'vscode';
-import { AttributesProvider } from './annotation.parser';
+import { TextDocument, Position, Range } from 'vscode';
+import { AttributesProvider, CommentWithPosition } from './annotation.parser';
 
 export function getAttributesProvider(document: TextDocument, position: Position): AttributesProvider {
-	// Extract comments relevant to the cursor (above and below)
-	const comments = extractRelevantCommentsFromDocument(document, position);
+	// Extract comments relevant to the cursor (above and below), including their line positions
+	const comments = getSurroundingComments(document, position);
 
 	// Switch context
 	return new AttributesProvider(comments);
 }
 
-function extractRelevantCommentsFromDocument(document: TextDocument, position: Position): string[] {
-	const comments: string[] = [];
+function getSurroundingComments(document: TextDocument, position: Position): CommentWithPosition[] {
+	const comments: CommentWithPosition[] = [];
 	const totalLines = document.lineCount;
 	let currentLine = position.line;
 
 	// Extract comments above the cursor
 	while (currentLine >= 0) {
-		const lineText = document.lineAt(currentLine).text.trim();
-		if (!lineText.startsWith("//")) {
+		const lineObject = document.lineAt(currentLine);
+		const trimmedStartText = lineObject.text.trimStart();
+		if (!trimmedStartText.startsWith("//")) {
 			break; // Stop if we hit a non-comment line
 		}
-		comments.unshift(lineText.trim()); // Add to the front of the array to keep the order
+
+		comments.unshift({
+			text: trimmedStartText.trim(),
+			range: lineObject.range,
+			startIndex: lineObject.text.length - trimmedStartText.length,
+		});
 		currentLine--;
 	}
 
 	// Extract comments below the cursor
 	currentLine = position.line + 1;
 	while (currentLine < totalLines) {
-		const lineText = document.lineAt(currentLine).text.trim();
-		if (!lineText.startsWith("//")) {
+		const lineObject = document.lineAt(currentLine);
+		const trimmedStartText = lineObject.text.trimStart();
+		if (!trimmedStartText.startsWith("//")) {
 			break; // Stop if we hit a non-comment line
 		}
-		comments.push(lineText.trim()); // Add after the cursor
+		comments.push({
+			text: trimmedStartText.trim(),
+			range: lineObject.range,
+			startIndex: lineObject.text.length - trimmedStartText.length,
+		});
 		currentLine++;
 	}
 

@@ -1,6 +1,7 @@
 
-import { ExtensionContext, languages } from 'vscode';
+import { ExtensionContext, languages, workspace } from 'vscode';
 import { GleeceProvider } from './gleece.completion.provider'; // Import the provider class
+import { diagnosticCollection, refreshDiagnosticsFull, refreshDiagnosticsInScope } from './diagnostics.listener';
 
 export function activate(context: ExtensionContext) {
 	const completionAndHoverProvider = new GleeceProvider();
@@ -15,7 +16,10 @@ export function activate(context: ExtensionContext) {
 		languages.registerHoverProvider(
 			{ scheme: 'file', language: 'go' },
 			completionAndHoverProvider
-		)
+		),
+		workspace.onDidOpenTextDocument((document) => refreshDiagnosticsFull(document)),
+		workspace.onDidChangeTextDocument((event) => refreshDiagnosticsInScope(event)),
+		workspace.onDidCloseTextDocument((document) => diagnosticCollection.delete(document.uri))
 	);
 }
 

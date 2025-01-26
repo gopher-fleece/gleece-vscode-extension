@@ -84,7 +84,7 @@
 		],
 		"grammars": [
 			{
-				"path": "./src/textmate/grammar.json",
+				"path": "./syntaxes/gleece.tmLanguage.json",
 				"scopeName": "gleece-annotations.injection",
 				"injectTo": ["source.go"]
 			}
