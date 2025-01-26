@@ -1,7 +1,7 @@
 import json5 from "json5";
 import { AttributeNames } from './enums';
-import { Diagnostic, Position, Range } from 'vscode';
-import { Validators } from './validators';
+import { Diagnostic, Range } from 'vscode';
+import { Validators } from './semantics/validators';
 
 interface GroupWithIndex {
 	match: string;
