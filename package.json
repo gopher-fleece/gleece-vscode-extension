@@ -86,8 +86,21 @@
 			{
 				"path": "./syntaxes/gleece.tmLanguage.json",
 				"scopeName": "gleece-annotations.injection",
-				"injectTo": ["source.go"]
+				"injectTo": [
+					"source.go"
+				]
 			}
-		]
+		],
+		"configuration": {
+			"type": "object",
+			"title": "Gleece Extension Configuration",
+			"properties": {
+				"gleece.extension.gleeceConfigPath": {
+					"type": "string",
+					"default": "./gleece.config.json",
+					"description": "Path to the project's gleece.config.json"
+				}
+			}
+		}
 	}
 }

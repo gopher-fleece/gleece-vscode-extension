@@ -1,4 +1,4 @@
-import { TextDocument, Position, Range } from 'vscode';
+import { TextDocument, Position } from 'vscode';
 import { AttributesProvider, CommentWithPosition } from './annotation.parser';
 
 export function getAttributesProvider(document: TextDocument, position: Position): AttributesProvider {
@@ -47,4 +47,51 @@ function getSurroundingComments(document: TextDocument, position: Position): Com
 	}
 
 	return comments;
+}
+
+export function getCommentBlocks(document: TextDocument): AttributesProvider[] {
+	const commentBlocks: { startLine: number; endLine: number }[] = [];
+	let currentBlockStart = -1;
+
+	// Scan the document line by line
+	for (let i = 0; i < document.lineCount; i++) {
+		const line = document.lineAt(i).text.trimStart();
+
+		// If it's a comment line
+		if (line.startsWith("//")) {
+			// Start a new block if we're not already in one
+			if (currentBlockStart === -1) {
+				currentBlockStart = i;
+			}
+		} else {
+			// If we're ending a comment block, record its range
+			if (currentBlockStart !== -1) {
+				commentBlocks.push({ startLine: currentBlockStart, endLine: i - 1 });
+				currentBlockStart = -1;
+			}
+		}
+	}
+
+	// Handle a trailing comment block
+	if (currentBlockStart !== -1) {
+		commentBlocks.push({ startLine: currentBlockStart, endLine: document.lineCount - 1 });
+	}
+
+	// Parse comment blocks into `AttributesProvider`
+	return commentBlocks.map(({ startLine, endLine }) => {
+		const comments: CommentWithPosition[] = [];
+
+		for (let i = startLine; i <= endLine; i++) {
+			const line = document.lineAt(i);
+			const trimmedText = line.text.trimStart();
+
+			comments.push({
+				text: trimmedText.trim(),
+				range: line.range,
+				startIndex: line.text.length - trimmedText.length, // Leading whitespace offset
+			});
+		}
+
+		return new AttributesProvider(comments);
+	});
 }

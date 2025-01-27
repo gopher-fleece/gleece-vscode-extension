@@ -15,6 +15,9 @@ import {
 	descriptionShouldExist,
 	valueMustBeHttpCodeString
 } from './validator.assertions';
+import { configManager } from '../configuration/config.manager';
+import { diagnosticError } from '../diagnostics/helpers';
+import { DiagnosticCode } from '../diagnostics/enums';
 
 
 function validateMethod(attribute: Attribute): Diagnostic[] {
@@ -89,6 +92,22 @@ function validateSecurity(attribute: Attribute): Diagnostic[] {
 				{ breakOnFailure: true, validator: propertiesMustExist },
 				{ breakOnFailure: false, validator: (attribute: Attribute) => propertiesKeyMustExist(attribute, 'scopes') },
 				{ breakOnFailure: false, validator: validateProperties },
+				{
+					breakOnFailure: false,
+					validator: (attribute: Attribute) => {
+						const validSchemaName = configManager.securitySchemaNames.includes(attribute.value!);
+						if (!validSchemaName) {
+							return [diagnosticError(
+								`Schema '${attribute.value}' is not specified in ` +
+								`${configManager.getExtensionConfigValue('gleeceConfigPath')}.\n` +
+								`Known schemas are: ${configManager.securitySchemaNames.join(', ')}`,
+								attribute.valueRange!,
+								DiagnosticCode.AnnotationPropertiesInvalidValueForKey
+							)];
+						}
+						return [];
+					}
+				},
 			],
 		}
 	);
@@ -120,7 +139,13 @@ function validateResponse(attribute: Attribute): Diagnostic[] {
 	);
 }
 
-function validateDescription(attribute: Attribute): Diagnostic[] {
+/**
+ * Validates an annotation with a description and no value or properties
+ *
+ * @param {Attribute} attribute
+ * @return {Diagnostic[]}
+ */
+function validateSimpleAnnotation(attribute: Attribute): Diagnostic[] {
 	return combine(
 		attribute,
 		{
@@ -138,8 +163,7 @@ function validateDescription(attribute: Attribute): Diagnostic[] {
 	);
 }
 
-
-export const Validators: { [Key in AttributeNames]?: (attribute: Attribute) => Diagnostic[] } = {
+export const Validators: { [Key in AttributeNames]: (attribute: Attribute) => Diagnostic[] } = {
 	[AttributeNames.Method]: validateMethod,
 	[AttributeNames.Route]: validateRoute,
 	[AttributeNames.Response]: validateResponse,
@@ -151,5 +175,7 @@ export const Validators: { [Key in AttributeNames]?: (attribute: Attribute) => D
 	[AttributeNames.Security]: validateSecurity,
 	[AttributeNames.AdvancedSecurity]: validateSecurity,
 	[AttributeNames.Tag]: validateTag,
-	[AttributeNames.Description]: validateDescription,
+	[AttributeNames.Description]: validateSimpleAnnotation,
+	[AttributeNames.Hidden]: validateSimpleAnnotation,
+	[AttributeNames.Deprecated]: validateSimpleAnnotation,
 }
