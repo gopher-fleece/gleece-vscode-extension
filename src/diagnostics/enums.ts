@@ -6,6 +6,7 @@ export enum DiagnosticCode {
 	AnnotationPropertiesMustExist = 'annotation-properties-must-exist',
 	AnnotationPropertiesInvalid = 'annotation-properties-invalid',
 	AnnotationPropertiesMissingKey = 'annotation-properties-missing-key',
+	AnnotationPropertiesUnknownKey = 'annotation-properties-unknown-key',
 	AnnotationPropertiesInvalidValueForKey = 'annotation-properties-invalid-value-for-key',
 	AnnotationDescriptionShouldExist = 'annotation-description-should-exist',
 }

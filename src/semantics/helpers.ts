@@ -3,6 +3,8 @@ import { Attribute } from '../annotation.parser';
 import { AttributeNames } from '../enums';
 import { KnownProperties } from './configuration';
 import { Validation, PropertyValidation, ValidationSequences } from './types';
+import { diagnosticWarning } from '../diagnostics/helpers';
+import { DiagnosticCode } from '../diagnostics/enums';
 
 export function validateProperties(attribute: Attribute): Diagnostic[] {
 	const diagnostics: Diagnostic[] = [];
@@ -11,10 +13,10 @@ export function validateProperties(attribute: Attribute): Diagnostic[] {
 		const propConf = knownProps?.find((config) => config.name === key);
 		if (!propConf) {
 			diagnostics.push(
-				new Diagnostic(
-					attribute.propertiesRange!,
+				diagnosticWarning(
 					`'${key}' is not a known property of ${attribute.name}`,
-					DiagnosticSeverity.Warning
+					attribute.propertiesRange!,
+					DiagnosticCode.AnnotationPropertiesUnknownKey
 				)
 			);
 			continue;
