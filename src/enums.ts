@@ -1,4 +1,4 @@
-import { CompletionItem } from 'vscode'
+import { CompletionItem } from 'vscode';
 
 export enum KnownJsonProperties {
 	Name = "name",
@@ -63,7 +63,7 @@ export const RepeatableAttributes: { [Key in AttributeNames]?: boolean } = {
 	[AttributeNames.Security]: true,
 	[AttributeNames.AdvancedSecurity]: true,
 	[AttributeNames.ErrorResponse]: true,
-}
+};
 
 export const AttributeDescriptions: { [Key in AttributeNames]: string } = {
 	[AttributeNames.Tag]: "The OpenAPI Tag associated with the controller",
@@ -80,5 +80,5 @@ export const AttributeDescriptions: { [Key in AttributeNames]: string } = {
 	[AttributeNames.Description]: "The operation's description",
 	[AttributeNames.Method]: "The HTTP method to be used for the operation",
 	[AttributeNames.ErrorResponse]: "An expected error response upon failure",
-}
+};
 

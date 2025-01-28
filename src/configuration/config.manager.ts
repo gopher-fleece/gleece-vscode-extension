@@ -26,7 +26,7 @@ class ConfigManager {
 	}
 
 	public async init() {
-		this._extensionConfig = workspace.getConfiguration('gleece.extension')
+		this._extensionConfig = workspace.getConfiguration('gleece.extension');
 		await this.loadGleeceConfig();
 
 		resourceManager.registerDisposable(
@@ -65,7 +65,7 @@ class ConfigManager {
 			}
 			return { data: await readFile(absolutePath, 'utf8') };
 		} catch (error) {
-			return { error, data: '' }
+			return { error, data: '' };
 		}
 	}
 

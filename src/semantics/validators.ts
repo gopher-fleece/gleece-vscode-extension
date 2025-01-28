@@ -1,7 +1,7 @@
 import { Diagnostic } from 'vscode';
 import { Attribute } from '../annotation.parser';
 import { AttributeNames } from '../enums';
-import { stdValueValidations, stdPropertyValidations } from './configuration';
+import { STD_VALUE_VALIDATION, STD_PROPERTY_VALIDATION } from './configuration';
 import { combine, validateProperties } from './helpers';
 import {
 	valueMustBeValidRoute,
@@ -26,12 +26,12 @@ function validateMethod(attribute: Attribute): Diagnostic[] {
 		attribute,
 		{
 			value: [
-				...stdValueValidations,
+				...STD_VALUE_VALIDATION,
 				{ breakOnFailure: false, validator: valueMustBeHttpCodeString },
 			],
 			properties: [
 				{ breakOnFailure: false, validator: propertiesShouldNotExist },
-				...stdPropertyValidations
+				...STD_PROPERTY_VALIDATION
 			],
 		},
 	);
@@ -42,7 +42,7 @@ function validateRoute(attribute: Attribute): Diagnostic[] {
 		attribute,
 		{
 			value: [
-				...stdValueValidations,
+				...STD_VALUE_VALIDATION,
 				{ breakOnFailure: false, validator: valueMustBeValidRoute },
 			],
 			properties: [
@@ -57,10 +57,10 @@ function validateSimpleParam(attribute: Attribute): Diagnostic[] {
 		attribute,
 		{
 			value: [
-				...stdValueValidations,
+				...STD_VALUE_VALIDATION,
 				{ breakOnFailure: false, validator: valueMustBeGoIdentifier },
 			],
-			properties: stdPropertyValidations,
+			properties: STD_PROPERTY_VALIDATION,
 		},
 	);
 }
@@ -70,10 +70,10 @@ function validateBody(attribute: Attribute, mustHaveMessage?: string): Diagnosti
 		attribute,
 		{
 			value: [
-				...stdValueValidations,
+				...STD_VALUE_VALIDATION,
 				{ breakOnFailure: false, validator: valueMustBeGoIdentifier },
 			],
-			properties: stdPropertyValidations,
+			properties: STD_PROPERTY_VALIDATION,
 		},
 	);
 }
@@ -82,8 +82,8 @@ function validateTag(attribute: Attribute): Diagnostic[] {
 	return combine(
 		attribute,
 		{
-			value: stdValueValidations,
-			properties: stdPropertyValidations,
+			value: STD_VALUE_VALIDATION,
+			properties: STD_PROPERTY_VALIDATION,
 		}
 	);
 }
@@ -92,7 +92,7 @@ function validateSecurity(attribute: Attribute): Diagnostic[] {
 	return combine(
 		attribute,
 		{
-			value: stdValueValidations,
+			value: STD_VALUE_VALIDATION,
 			properties: [
 				{ breakOnFailure: true, validator: propertiesMustBeValidJson5 },
 				{ breakOnFailure: true, validator: propertiesMustExist },
@@ -124,7 +124,7 @@ function validateResponse(attribute: Attribute): Diagnostic[] {
 		attribute,
 		{
 			value: [
-				...stdValueValidations,
+				...STD_VALUE_VALIDATION,
 				{
 					breakOnFailure: true,
 					validator: (attribute: Attribute) => valueMustBeNumeric(
@@ -163,9 +163,26 @@ function validateSimpleAnnotation(attribute: Attribute): Diagnostic[] {
 					validator: valueShouldNotExist,
 				},
 			],
-			properties: stdPropertyValidations,
+			properties: STD_PROPERTY_VALIDATION,
 			description: [
 				{ breakOnFailure: true, validator: descriptionShouldExist },
+			],
+		},
+	);
+}
+
+function validateHidden(attribute: Attribute): Diagnostic[] {
+	return combine(
+		attribute,
+		{
+			value: [
+				{
+					breakOnFailure: false,
+					validator: valueShouldNotExist,
+				},
+			],
+			properties: [
+				{ breakOnFailure: false, validator: propertiesShouldNotExist },
 			],
 		},
 	);
@@ -184,6 +201,6 @@ export const Validators: { [Key in AttributeNames]: (attribute: Attribute) => Di
 	[AttributeNames.AdvancedSecurity]: validateSecurity,
 	[AttributeNames.Tag]: validateTag,
 	[AttributeNames.Description]: validateSimpleAnnotation,
-	[AttributeNames.Hidden]: validateSimpleAnnotation,
+	[AttributeNames.Hidden]: validateHidden,
 	[AttributeNames.Deprecated]: validateSimpleAnnotation,
-}
+};

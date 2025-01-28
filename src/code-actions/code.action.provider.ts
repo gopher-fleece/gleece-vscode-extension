@@ -77,7 +77,7 @@ export class GleeceCodeActionProvider implements CodeActionProvider {
 		fix.edit = new WorkspaceEdit();
 		fix.edit.replace(document.uri, fixRange, '');
 		fix.diagnostics = [diagnostic];
-		return fix
+		return fix;
 	}
 
 	private getShouldNotExistFixRange(

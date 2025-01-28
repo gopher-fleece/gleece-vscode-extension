@@ -69,6 +69,10 @@ export class AttributesProvider {
 	}
 
 	public shiftRange(offsetLines: number): void {
+		if (offsetLines === 0) {
+			return;
+		}
+
 		this._coveredRange = new Range(
 			new Position(this._coveredRange.start.line + offsetLines, 0),
 			new Position(
@@ -82,7 +86,7 @@ export class AttributesProvider {
 			diagnostic.range = diagnostic.range.with(
 				new Position(diagnostic.range.start.line + offsetLines, diagnostic.range.start.character),
 				new Position(diagnostic.range.end.line + offsetLines, diagnostic.range.end.character),
-			)
+			);
 		}
 	}
 

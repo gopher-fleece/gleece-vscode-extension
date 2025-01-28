@@ -36,7 +36,7 @@ export class GleeceProvider implements CompletionItemProvider, HoverProvider {
 		const existingAttribNames = provider.getAttributeNames();
 		const relevantCompletions = AttributeNamesCompletionObjects.filter((obj) => {
 			const labelValue = (obj.label as CompletionItemLabel)?.label ?? obj.label;
-			return RepeatableAttributes[labelValue as AttributeNames] || !existingAttribNames.includes(labelValue)
+			return RepeatableAttributes[labelValue as AttributeNames] || !existingAttribNames.includes(labelValue);
 		});
 
 		return relevantCompletions;
@@ -53,7 +53,7 @@ export class GleeceProvider implements CompletionItemProvider, HoverProvider {
 
 		// If it's an annotation, show a hover with more information
 		if (!text.startsWith('// @')) {
-			return undefined
+			return undefined;
 		}
 
 		const matches = /^\/\/\s+@(\w+)/.exec(text);
@@ -66,7 +66,7 @@ export class GleeceProvider implements CompletionItemProvider, HoverProvider {
 		const attribute = provider.getAttribute(matches[1]);
 
 		if (!attribute) {
-			return undefined
+			return undefined;
 		}
 
 		const markdown = new MarkdownString();

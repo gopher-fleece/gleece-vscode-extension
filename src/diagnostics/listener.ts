@@ -46,7 +46,7 @@ export class GleeceDiagnosticsListener {
 		}
 
 		if ((event.contentChanges?.length > 0) == false) {
-			return
+			return;
 		}
 
 
@@ -84,7 +84,13 @@ export class GleeceDiagnosticsListener {
 			// If the provider starts AFTER the changed range, shift it
 			if (provider.coveredRange.start.line > changeRange.end.line) {
 				provider.shiftRange(lineShift);
-			} else if (provider.coveredRange.contains(changeRange) || changeRange.contains(provider.coveredRange)) {
+				return;
+			}
+
+			const isSameLine = provider.coveredRange.start.line >= changeRange.start.line
+				|| provider.coveredRange.end.line <= changeRange.end.line;
+
+			if (isSameLine || provider.coveredRange.contains(changeRange) || changeRange.contains(provider.coveredRange)) {
 				// If the provider overlaps with the changed range, check if content has changed
 				const contentHasChanged = this.didContentChange(event, provider);
 
@@ -111,7 +117,7 @@ export class GleeceDiagnosticsListener {
 	}
 
 	public textDocumentClosed(document: TextDocument) {
-		this._diagnosticCollection.delete(document.uri)
+		this._diagnosticCollection.delete(document.uri);
 	}
 
 	public deactivate(): void {

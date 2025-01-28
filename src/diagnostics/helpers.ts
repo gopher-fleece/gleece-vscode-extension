@@ -9,7 +9,7 @@ function createDiagnostic(
 	code?: number | string,
 ): Diagnostic {
 	const diagnostic = new Diagnostic(range, message, severity);
-	diagnostic.source = Gleece
+	diagnostic.source = Gleece;
 	if (code !== undefined) {
 		diagnostic.code = code;
 	}

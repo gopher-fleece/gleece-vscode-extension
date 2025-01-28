@@ -1,7 +1,7 @@
 import { Diagnostic, DiagnosticSeverity, Range } from 'vscode';
 import { Attribute } from '../annotation.parser';
 import { AttributeNames } from '../enums';
-import { KnownProperties } from './configuration';
+import { KNOWN_PROPERTIES } from './configuration';
 import { Validation, PropertyValidation, ValidationSequences } from './types';
 import { diagnosticWarning } from '../diagnostics/helpers';
 import { DiagnosticCode } from '../diagnostics/enums';
@@ -9,7 +9,7 @@ import { DiagnosticCode } from '../diagnostics/enums';
 export function validateProperties(attribute: Attribute): Diagnostic[] {
 	const diagnostics: Diagnostic[] = [];
 	for (const [key, value] of Object.entries(attribute.properties ?? [])) {
-		const knownProps = KnownProperties[attribute.name as AttributeNames];
+		const knownProps = KNOWN_PROPERTIES[attribute.name as AttributeNames];
 		const propConf = knownProps?.find((config) => config.name === key);
 		if (!propConf) {
 			diagnostics.push(
