@@ -2,12 +2,17 @@
 	"name": "gleece-extension",
 	"displayName": "Gleece",
 	"description": "The Gleece extension for Visual Studio Code",
-	"version": "0.0.10",
+	"version": "0.0.8",
 	"publisher": "haim-kastner",
 	"author": {
 		"name": "Haim Kastner",
 		"email": "hello@haim-kastner.com"
 	},
+	"contributors": [
+		{
+			"name": "Yuval Pomerchik"
+		}
+	],
 	"icon": "resources/logo.jpg",
 	"license": "MIT",
 	"engines": {
@@ -22,7 +27,9 @@
 		"golang",
 		"annotation",
 		"documentation",
-		"gleece"
+		"gleece",
+		"API",
+		"Rest API"
 	],
 	"activationEvents": [
 		"onLanguage:go",
@@ -42,6 +49,7 @@
 		"watch": "npm run compile && webpack --watch",
 		"package": "webpack --mode production --devtool hidden-source-map",
 		"lint": "eslint src --ext ts",
+		"lint:fix": "eslint src --ext ts --fix",
 		"vscode:prepublish": "npm run package",
 		"vscode:package": "vsce package",
 		"vscode:publish": "vsce publish"

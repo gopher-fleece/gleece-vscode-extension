@@ -12,19 +12,21 @@
 
 A powerful Visual Studio Code extension designed to enhance your Gleece API development experience by providing intelligent annotation highlighting and improved code visibility.
 
-> ⚠️ **Beta Version Notice**: This extension is currently in beta. While fully functional, you may encounter occasional issues. Please report any bugs or suggestions in our [GitHub issues](https://github.com/gopher-fleece/gleece-vscode-extension/issues).
 
 ## ✨ Features
 
-- **Syntax Highlighting**: Specialized highlighting for Gleece annotations
-- **Enhanced Code Visibility**: Improved readability of Gleece-specific code elements
-- **Real-time Processing**: Instant visual feedback as you code
+- **Syntax Highlighting**: Improved readability of Gleece-specific elements
+- **Real-time Processing**: Instant visual feedback as you write
+- **Warning & Error Indicators**: Real-time markers and tips
+- **Documentation Tooltips**: Instant documentation on hover for Gleece elements
+- **Parameter Hints**: Function parameter information and suggestions
+- **Code Actions**: Quick fixes and refactoring suggestions
 
 ## 🔍 What is Gleece?
 
 Gleece is a powerful Go framework that simplifies API development through intuitive annotations. It provides a structured approach to building robust and maintainable APIs in Go. For more information about Gleece and its capabilities, visit the [Gleece project repository](https://github.com/gopher-fleece/gleece#readme).
 
-## 🚀 Highlighting
+## 📸 How it is looks like?
 
 ## With Gleece Extension
 ![Screenshot](https://raw.githubusercontent.com/gopher-fleece/gleece-vscode-extension/refs/heads/main/resources/after.png)
@@ -39,6 +41,8 @@ This extension is open source! Visit our [GitHub repository](https://github.com/
 - Contribute to the codebase
 - Star the project
 - Stay updated with the latest changes
+
+> ⚠️ **Beta Version Notice**: This extension is currently in beta. While fully functional, you may encounter occasional issues. Please report any bugs or suggestions in our [GitHub issues](https://github.com/gopher-fleece/gleece-vscode-extension/issues).
 
 ## 🤝 Contributing
 
