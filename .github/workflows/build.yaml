@@ -12,8 +12,6 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0 # Important for versioning
 
     - name: Setup Node.js
       uses: actions/setup-node@v4
@@ -41,28 +39,19 @@ jobs:
         path: "*.vsix"
         retention-days: 5 # Keep artifacts for 5 days
 
-    # Version bump and release only on main branch
-    - name: Bump version and push tag
-      if: github.ref == 'refs/heads/main'
+    - name: Increase Version
+      id: update_version
       run: |
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
-        # Get current version from package.json
-        CURRENT_VERSION=$(node -p "require('./package.json').version")
-        # Split version into components
-        IFS='.' read -ra VERSION_PARTS <<< "$CURRENT_VERSION"
-        # Increment patch version
-        NEW_PATCH=$((VERSION_PARTS[2] + 1))
-        NEW_VERSION="${VERSION_PARTS[0]}.${VERSION_PARTS[1]}.$NEW_PATCH"
-        # Update package.json
-        npm version $NEW_VERSION --no-git-tag-version
-        # Create new tag
-        git add package.json
-        git commit -m "Bump version to $NEW_VERSION [skip ci]"
-        echo "NEW_VERSION=${NEW_VERSION}" >> $GITHUB_ENV
-        git tag "v$NEW_VERSION"
-        git push
-        git push --tags
+        npm version patch --no-git-tag-version
+        NEXT_VERSION=$(npm pkg get version)
+        echo "VERSION=$NEXT_VERSION" >> $GITHUB_OUTPUT
+
+    - name: Commit and push version
+      if: github.ref == 'refs/heads/main'
+      uses: devops-infra/action-commit-push@master
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        commit_message: Update to version ${{ steps.update_version.outputs.VERSION }} [skip-ci]
 
     - name: Create Release
       if: github.ref == 'refs/heads/main'
@@ -71,6 +60,6 @@ jobs:
       uses: softprops/action-gh-release@v2
       with:
         files: "*.vsix"
-        tag_name: v${{ env.NEW_VERSION }}
-        name: Release v${{ env.NEW_VERSION }}
+        tag_name: v${{ steps.update_version.outputs.VERSION }}
+        name: Release v${{ steps.update_version.outputs.VERSION }}
         generate_release_notes: true
