@@ -10,10 +10,11 @@ import {
 	propertiesMustExist,
 	propertiesKeyMustExist,
 	valueMustBeNumeric,
-	valueShouldBeHttpStatusCode,
+	valueMustBeHttpStatusCode,
 	valueShouldNotExist,
 	descriptionShouldExist,
-	valueMustBeHttpCodeString
+	valueMustBeHttpCodeString,
+	propertiesShouldNotExist
 } from './validator.assertions';
 import { configManager } from '../configuration/config.manager';
 import { diagnosticError } from '../diagnostics/helpers';
@@ -28,7 +29,10 @@ function validateMethod(attribute: Attribute): Diagnostic[] {
 				...stdValueValidations,
 				{ breakOnFailure: false, validator: valueMustBeHttpCodeString },
 			],
-			properties: stdPropertyValidations,
+			properties: [
+				{ breakOnFailure: false, validator: propertiesShouldNotExist },
+				...stdPropertyValidations
+			],
 		},
 	);
 }
@@ -41,7 +45,9 @@ function validateRoute(attribute: Attribute): Diagnostic[] {
 				...stdValueValidations,
 				{ breakOnFailure: false, validator: valueMustBeValidRoute },
 			],
-			properties: stdPropertyValidations,
+			properties: [
+				{ breakOnFailure: false, validator: propertiesShouldNotExist },
+			],
 		},
 	);
 }
@@ -128,13 +134,15 @@ function validateResponse(attribute: Attribute): Diagnostic[] {
 				},
 				{
 					breakOnFailure: false,
-					validator: (attribute: Attribute) => valueShouldBeHttpStatusCode(
+					validator: (attribute: Attribute) => valueMustBeHttpStatusCode(
 						attribute,
 						`${attribute.value} is not a standard HTTP status code`
 					),
 				},
 			],
-			properties: stdPropertyValidations,
+			properties: [
+				{ breakOnFailure: false, validator: propertiesShouldNotExist },
+			],
 		},
 	);
 }

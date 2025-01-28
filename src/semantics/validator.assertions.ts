@@ -85,11 +85,11 @@ export function valueMustBeValidRoute(attribute: Attribute, mustHaveMessage?: st
 	return [];
 }
 
-export function valueShouldBeHttpStatusCode(attribute: Attribute, mustHaveMessage?: string): Diagnostic[] {
+export function valueMustBeHttpStatusCode(attribute: Attribute, mustHaveMessage?: string): Diagnostic[] {
 	const status = STATUS_CODES[attribute.value!];
 	if (!status) {
 		return [
-			diagnosticWarning(
+			diagnosticError(
 				mustHaveMessage ?? `${attribute.value} is not a standard HTTP status code`,
 				attribute.valueRange!,
 				DiagnosticCode.AnnotationValueInvalid

@@ -3,6 +3,7 @@ import { window, workspace, WorkspaceConfiguration } from 'vscode';
 import { GleeceExtensionConfig } from './extension.config';
 import { GleeceConfig } from './gleece.config';
 import { readFile } from 'fs/promises';
+import { resourceManager } from '../extension';
 
 class ConfigManager {
 	private _extensionConfig?: WorkspaceConfiguration;
@@ -28,11 +29,13 @@ class ConfigManager {
 		this._extensionConfig = workspace.getConfiguration('gleece.extension')
 		await this.loadGleeceConfig();
 
-		workspace.onDidChangeConfiguration(async (event) => {
-			if (event.affectsConfiguration('gleece.extension.gleeceConfigPath')) {
-				await this.loadGleeceConfig();
-			}
-		});
+		resourceManager.registerDisposable(
+			workspace.onDidChangeConfiguration(async (event) => {
+				if (event.affectsConfiguration('gleece.extension.gleeceConfigPath')) {
+					await this.loadGleeceConfig();
+				}
+			})
+		);
 	}
 
 	public getExtensionConfigValue<TKey extends keyof GleeceExtensionConfig>(key: TKey): GleeceExtensionConfig[TKey] | undefined {

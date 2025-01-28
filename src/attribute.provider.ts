@@ -49,7 +49,7 @@ function getSurroundingComments(document: TextDocument, position: Position): Com
 	return comments;
 }
 
-export function getCommentBlocks(document: TextDocument): AttributesProvider[] {
+export function getProvidersForEntireDocument(document: TextDocument): AttributesProvider[] {
 	const commentBlocks: { startLine: number; endLine: number }[] = [];
 	let currentBlockStart = -1;
 

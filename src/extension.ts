@@ -1,35 +1,53 @@
 
-import { ExtensionContext, languages, workspace } from 'vscode';
-import { GleeceProvider } from './gleece.completion.provider'; // Import the provider class
-import { diagnosticCollection, refreshDiagnosticsFull, refreshDiagnosticsInScope } from './diagnostics/listener';
-import { configManager } from './configuration/config.manager';
+import { CodeActionKind, ExtensionContext, languages, window, workspace } from 'vscode';
+import { GleeceProvider } from './gleece.completion.provider';
 import { GoLangId } from './common.constants';
+import { ResourceManager } from './resource.manager';
+import { GleeceCodeActionProvider } from './code-actions/code.action.provider';
+import { GleeceDiagnosticsListener } from './diagnostics/listener';
+
+export let resourceManager: ResourceManager;
+
+let completionAndHoverProvider: GleeceProvider;
+let gleeceCodeActionsProvider: GleeceCodeActionProvider;
+let diagnosticsListener: GleeceDiagnosticsListener;
 
 export async function activate(context: ExtensionContext) {
-	await configManager.init();
-	const completionAndHoverProvider = new GleeceProvider();
+	resourceManager = new ResourceManager(context);
 
-	// Register the completion provider for Go files (or any other language)
+	// Using dynamic imports so we can ensure the resource manager has its context first
+	const { configManager } = (await import('./configuration/config.manager'));
+	await configManager.init();
+
+	completionAndHoverProvider = new GleeceProvider();
+	gleeceCodeActionsProvider = new GleeceCodeActionProvider();
+	diagnosticsListener = new GleeceDiagnosticsListener();
+
 	context.subscriptions.push(
 		languages.registerCompletionItemProvider(
 			GoLangId,
-			completionAndHoverProvider, // The completion provider instance
-			'@' // Trigger completion when "@" is typed
+			completionAndHoverProvider,
+			'@'
 		),
 		languages.registerHoverProvider(
 			{ scheme: 'file', language: GoLangId },
 			completionAndHoverProvider
 		),
-		workspace.onDidOpenTextDocument((document) => refreshDiagnosticsFull(document)),
-		workspace.onDidChangeTextDocument((event) => refreshDiagnosticsInScope(event)),
-		workspace.onDidCloseTextDocument((document) => diagnosticCollection.delete(document.uri))
+		languages.registerCodeActionsProvider(
+			{ scheme: 'file', language: GoLangId },
+			gleeceCodeActionsProvider,
+			{ providedCodeActionKinds: [CodeActionKind.QuickFix, CodeActionKind.SourceFixAll] }
+		),
+		workspace.onDidOpenTextDocument((document) => diagnosticsListener.fullDiagnostics(document)),
+		workspace.onDidChangeTextDocument((event) => diagnosticsListener.differentialDiagnostics(event)),
+		workspace.onDidCloseTextDocument((document) => diagnosticsListener.textDocumentClosed(document)),
 	);
 
-	workspace.textDocuments.forEach((document) => {
-		refreshDiagnosticsFull(document);
-	});
+	if (window.activeTextEditor) {
+		diagnosticsListener.fullDiagnostics(window.activeTextEditor.document);
+	}
 }
 
 export function deactivate() {
-	// Clean-up code if needed
+	diagnosticsListener?.deactivate();
 }

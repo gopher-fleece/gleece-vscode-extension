@@ -1,6 +1,6 @@
 import json5 from "json5";
 import { AttributeNames } from './enums';
-import { Diagnostic, Range } from 'vscode';
+import { Diagnostic, Position, Range } from 'vscode';
 import { Validators } from './semantics/validators';
 
 interface GroupWithIndex {
@@ -39,40 +39,83 @@ export interface NonAttributeComment {
 }
 
 export class AttributesProvider {
-	// Private properties
-	private attributes: Attribute[] = [];
-	private nonAttributeComments: NonAttributeComment[] = [];
+	private _attributes: Attribute[] = [];
+	private _nonAttributeComments: NonAttributeComment[] = [];
+	private _coveredRange: Range;
+	private _lastValidationResult?: Diagnostic[];
+
+	public get lastValidationResult(): Diagnostic[] {
+		return this._lastValidationResult ?? [];
+	}
+
+	public get coveredRange(): Range {
+		return this._coveredRange;
+	}
 
 	constructor(comments: CommentWithPosition[]) {
+		if (comments.length <= 0) {
+			throw new Error("AttributeProvider called with no comments");
+		}
+
 		this.parseComments(comments);
+
+		// We're operating on the assumption comments are ordered and each one spans exactly one line.
+		const firstComment = comments[0];
+		const lastComment = comments[comments.length - 1];
+		this._coveredRange = new Range(
+			new Position(firstComment.range.start.line, 0),
+			new Position(lastComment.range.end.line, lastComment.text.length),
+		);
+	}
+
+	public shiftRange(offsetLines: number): void {
+		this._coveredRange = new Range(
+			new Position(this._coveredRange.start.line + offsetLines, 0),
+			new Position(
+				this._coveredRange.end.line + offsetLines,
+				this._coveredRange.end.character - this._coveredRange.start.character
+			),
+		);
+
+		// Adjust each diagnostic to its new range
+		for (const diagnostic of this.lastValidationResult) {
+			diagnostic.range = diagnostic.range.with(
+				new Position(diagnostic.range.start.line + offsetLines, diagnostic.range.start.character),
+				new Position(diagnostic.range.end.line + offsetLines, diagnostic.range.end.character),
+			)
+		}
 	}
 
 	public isEmpty(): boolean {
-		return !(this.attributes?.length > 0) && !(this.nonAttributeComments.length > 0);
+		return !(this._attributes?.length > 0) && !(this._nonAttributeComments.length > 0);
 	}
 
 	// Public method to get the parsed attributes
 	public getAttributes(): Attribute[] {
-		return this.attributes;
+		return this._attributes;
 	}
 
 	// Public method to get the parsed attributes
 	public getAttribute(name: AttributeNames | string): Attribute | undefined {
-		return this.attributes.find((attr) => attr.name === name);
+		return this._attributes.find((attr) => attr.name === name);
 	}
 
 	public getAttributeNames(): string[] {
-		return this.attributes.map((attr) => attr.name);
+		return this._attributes.map((attr) => attr.name);
 	}
 
 	// Public method to get non-attribute comments (indexed by line number)
 	public getNonAttributeComments(): NonAttributeComment[] {
-		return this.nonAttributeComments;
+		return this._nonAttributeComments;
 	}
 
-	public validate(): Diagnostic[] {
+	public getDiagnostics(withCache?: boolean): Diagnostic[] {
+		if (withCache && this._lastValidationResult !== undefined) {
+			return this._lastValidationResult;
+		}
+
 		const errors: Diagnostic[] = [];
-		for (const attrib of this.attributes) {
+		for (const attrib of this._attributes) {
 			const validator = Validators[attrib.name as AttributeNames];
 			if (validator) {
 				const validationErrors = validator(attrib);
@@ -81,7 +124,7 @@ export class AttributesProvider {
 				}
 			}
 		}
-
+		this._lastValidationResult = errors;
 		return errors;
 	}
 
@@ -92,7 +135,6 @@ export class AttributesProvider {
 		const parsingRegex = /^\/\/ @(\w+)(?:(?:\(([\w-_/\\{} ]+))(?:\s*,\s*(\{.*\}))?\))?(?:\s+(.+))?$/;
 
 		for (const comment of comments) {
-
 			const { attribute, isAttribute, error } = this.parseComment(parsingRegex, comment);
 
 			if (error) {
@@ -100,10 +142,10 @@ export class AttributesProvider {
 			}
 
 			if (isAttribute && attribute) {
-				this.attributes.push(attribute);
+				this._attributes.push(attribute);
 			} else {
 				// Trim `//` and any extra spaces
-				this.nonAttributeComments.push({
+				this._nonAttributeComments.push({
 					text: comment.text.replace(/^\/\/\s*/, ""),
 					range: comment.range
 				});
@@ -140,7 +182,7 @@ export class AttributesProvider {
 
 		const attribute: Attribute = {
 			name: nameGroup!.match,
-			nameRange: new Range(lineNumber, nameGroup!.start, lineNumber, nameGroup!.end),
+			nameRange: new Range(lineNumber, nameGroup!.start - 1, lineNumber, nameGroup!.end),
 			value: valueGroup?.match,
 			valueRange: valueGroup ? new Range(lineNumber, valueGroup.start, lineNumber, valueGroup.end) : undefined,
 			properties: props,

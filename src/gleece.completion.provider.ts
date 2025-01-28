@@ -9,7 +9,7 @@ import {
 	Position,
 	ProviderResult,
 	TextDocument,
-	HoverProvider
+	HoverProvider,
 } from 'vscode';
 import { AttributeDescriptions, AttributeNames, AttributeNamesCompletionObjects, RepeatableAttributes } from './enums';
 import { getAttributesProvider } from './attribute.provider';
