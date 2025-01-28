@@ -28,6 +28,13 @@ jobs:
     - name: Build
       run: npm run package
 
+    - name: Increase Version
+      id: update_version
+      run: |
+        npm version patch --no-git-tag-version
+        NEXT_VERSION=$(node -p "require('./package.json').version")
+        echo "VERSION=$NEXT_VERSION" >> $GITHUB_OUTPUT
+
     - name: Create VSIX
       run: npm run vscode:package
 
@@ -38,13 +45,6 @@ jobs:
         name: gleece-extension-${{ github.sha }}
         path: "*.vsix"
         retention-days: 5 # Keep artifacts for 5 days
-
-    - name: Increase Version
-      id: update_version
-      run: |
-        npm version patch --no-git-tag-version
-        NEXT_VERSION=$(node -p "require('./package.json').version")
-        echo "VERSION=$NEXT_VERSION" >> $GITHUB_OUTPUT
 
     - name: Commit and push version
       if: github.ref == 'refs/heads/main'
