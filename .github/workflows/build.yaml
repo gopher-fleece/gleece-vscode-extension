@@ -43,7 +43,7 @@ jobs:
       id: update_version
       run: |
         npm version patch --no-git-tag-version
-        NEXT_VERSION=$(npm pkg get version)
+        NEXT_VERSION=$(node -p "require('./package.json').version")
         echo "VERSION=$NEXT_VERSION" >> $GITHUB_OUTPUT
 
     - name: Commit and push version
