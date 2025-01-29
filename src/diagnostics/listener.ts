@@ -121,7 +121,7 @@ export class GleeceDiagnosticsListener {
 	}
 
 	public deactivate(): void {
-		this._diagnosticCollection.clear;
+		this._diagnosticCollection.clear();
 		this._currentProviders = [];
 	}
 }

@@ -43,9 +43,17 @@ export async function activate(context: ExtensionContext) {
 		workspace.onDidCloseTextDocument((document) => diagnosticsListener.textDocumentClosed(document)),
 	);
 
-	if (window.activeTextEditor) {
-		diagnosticsListener.fullDiagnostics(window.activeTextEditor.document);
-	}
+	// It would appear there might be a delay between when VS Code calls activate and the time
+	// the active text editor updates.
+	// While silly, a static timeout here seems to do the trick.
+	setTimeout(
+		() => {
+			if (window.activeTextEditor) {
+				diagnosticsListener.fullDiagnostics(window.activeTextEditor.document);
+			}
+		},
+		300
+	);
 }
 
 export function deactivate() {
