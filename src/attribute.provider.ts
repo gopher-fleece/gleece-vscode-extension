@@ -49,12 +49,15 @@ function getSurroundingComments(document: TextDocument, position: Position): Com
 	return comments;
 }
 
-export function getProvidersForEntireDocument(document: TextDocument): AttributesProvider[] {
+export function getProvidersForRange(document: TextDocument, startLine?: number, endLine?: number): AttributesProvider[] {
 	const commentBlocks: { startLine: number; endLine: number }[] = [];
 	let currentBlockStart = -1;
 
-	// Scan the document line by line
-	for (let i = 0; i < document.lineCount; i++) {
+	const scanStart = startLine ?? 0;
+	const scanEnd = endLine ?? document.lineCount;
+
+	// Scan the document line by line, starting at the range's start
+	for (let i = scanStart; i < scanEnd; i++) {
 		const line = document.lineAt(i).text.trimStart();
 
 		// If it's a comment line
@@ -74,7 +77,7 @@ export function getProvidersForEntireDocument(document: TextDocument): Attribute
 
 	// Handle a trailing comment block
 	if (currentBlockStart !== -1) {
-		commentBlocks.push({ startLine: currentBlockStart, endLine: document.lineCount - 1 });
+		commentBlocks.push({ startLine: currentBlockStart, endLine: scanEnd - 1 });
 	}
 
 	// Parse comment blocks into `AttributesProvider`

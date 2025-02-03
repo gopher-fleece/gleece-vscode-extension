@@ -3,21 +3,22 @@ import {
 	DiagnosticCollection,
 	languages,
 	TextDocument,
-	TextDocumentChangeEvent
+	TextDocumentChangeEvent,
 } from 'vscode';
-import { getAttributesProvider, getProvidersForEntireDocument } from '../attribute.provider';
+import { getProvidersForRange } from '../attribute.provider';
 import { GoLangId } from '../common.constants';
 import { AttributesProvider } from '../annotation.parser';
 import { resourceManager } from '../extension';
-
+import { GenericIntervalTree } from './interval.tree';
 
 export class GleeceDiagnosticsListener {
 	private _diagnosticCollection: DiagnosticCollection;
-	private _currentProviders: AttributesProvider[] = [];
+	private _tree: GenericIntervalTree<AttributesProvider>;
 
 	public constructor() {
 		this._diagnosticCollection = languages.createDiagnosticCollection('gleece');
 		resourceManager.registerDisposable(this._diagnosticCollection);
+		this._tree = new GenericIntervalTree();
 	}
 
 	public fullDiagnostics(document: TextDocument): void {
@@ -25,17 +26,18 @@ export class GleeceDiagnosticsListener {
 			return;
 		}
 
-		const providers = getProvidersForEntireDocument(document);
-
+		this._tree.clear();
 		const diagnostics: Diagnostic[] = [];
-		for (const holder of providers) {
-			if (!holder.isEmpty()) {
-				diagnostics.push(...holder.getDiagnostics());
+
+		const providers = getProvidersForRange(document);
+		for (const provider of providers) {
+			this._tree.insert(provider);
+			if (!provider.isEmpty()) {
+				diagnostics.push(...provider.getDiagnostics());
 			}
 		}
 
 		this._diagnosticCollection.clear();
-		this._currentProviders = providers;
 
 		this._diagnosticCollection.set(document.uri, diagnostics);
 	}
@@ -52,10 +54,13 @@ export class GleeceDiagnosticsListener {
 
 		this.updateProviders(event);
 
-		const diagnostics: Diagnostic[] = [];
-		for (const provider of this._currentProviders) {
+		let diagnostics: Diagnostic[] = [];
+		// This is far from ideal. We could just remove the correct diagnostics and re-check the specific providers
+		// No practical difference but performance matters...
+		for (const provider of this._tree.getAll()) {
 			if (!provider.isEmpty()) {
-				diagnostics.push(...provider.getDiagnostics(true));
+				const errors = provider.getDiagnostics(true);
+				diagnostics = diagnostics.concat(errors);
 			}
 		}
 
@@ -66,54 +71,51 @@ export class GleeceDiagnosticsListener {
 	}
 
 	private updateProviders(event: TextDocumentChangeEvent) {
-		// Calculate line shift for the change
-		const lineShift = event.contentChanges.reduce((totalShift, change) => {
+		let scanStart: number = Number.MAX_SAFE_INTEGER;
+		let scanEnd: number = Number.MIN_SAFE_INTEGER;
+
+		for (const change of event.contentChanges) {
 			const linesAdded = change.text.split('\n').length - 1; // Number of newlines in the added text
 			const linesRemoved = change.range.end.line - change.range.start.line; // Lines removed in the range
-			return totalShift + (linesAdded - linesRemoved);
-		}, 0);
 
-		const changeRange = event.contentChanges[0].range;
+			const lineShift = linesAdded - linesRemoved;
+			const lineShiftAbs = Math.abs(lineShift);
 
-		// KNOWN BUG:
-		// If user splits an annotation in two, i.e., adds a newline into an existing attribute provider,
-		// it basically looses context as we now have 2 instead of one instance.
-
-		// Iterate through all providers once
-		this._currentProviders.forEach((provider, index) => {
-			// If the provider starts AFTER the changed range, shift it
-			if (provider.coveredRange.start.line > changeRange.end.line) {
-				provider.shiftRange(lineShift);
-				return;
+			const intersections = this._tree.searchAll(change.range);
+			const { before, after } = this._tree.findClosest(change.range);
+			if (after) {
+				const entitiesToShift = this._tree.findAfter(after.range);
+				entitiesToShift.forEach((entity) => {
+					// Have to update the tree or we loose track of the actual ranges
+					this._tree.remove(entity);
+					entity.shiftRange(lineShift);
+					this._tree.insert(entity);
+				});
 			}
 
-			const isSameLine = provider.coveredRange.start.line >= changeRange.start.line
-				|| provider.coveredRange.end.line <= changeRange.end.line;
-
-			if (isSameLine || provider.coveredRange.contains(changeRange) || changeRange.contains(provider.coveredRange)) {
-				// If the provider overlaps with the changed range, check if content has changed
-				const contentHasChanged = this.didContentChange(event, provider);
-
-				if (contentHasChanged) {
-					// Recreate the provider if content has changed
-					const replacementProvider = getAttributesProvider(event.document, provider.coveredRange.start);
-					this._currentProviders[index] = replacementProvider;
-				} else {
-					// If only range shift is needed, apply it
-					provider.shiftRange(lineShift);
-				}
+			if (before) {
+				this._tree.remove(before);
+				scanStart = Math.min(before.range.start.line - lineShiftAbs, scanStart);
+				scanEnd = Math.max(before.range.end.line + lineShiftAbs + 1, scanEnd);
 			}
-		});
-	}
 
-	private didContentChange(event: TextDocumentChangeEvent, provider: AttributesProvider): boolean {
-		// Check if the text within the provider's covered range has actually changed
-		const changes = event.contentChanges.filter(change =>
-			provider.coveredRange.start.line <= change.range.end.line &&
-			provider.coveredRange.end.line >= change.range.start.line
-		);
+			if (after) {
+				this._tree.remove(after);
+				scanStart = Math.min(after.range.start.line - lineShiftAbs, scanStart);
+				scanEnd = Math.max(after.range.end.line + lineShiftAbs + 1, scanEnd);
+			}
 
-		return changes.length > 0; // If any change overlaps with the provider, we consider it content change
+			for (const provider of intersections) {
+				this._tree.remove(provider);
+				scanStart = Math.min(provider.range.start.line - lineShiftAbs, scanStart);
+				scanEnd = Math.max(provider.range.end.line + lineShiftAbs + 1, scanEnd);
+			}
+		}
+
+		if (scanStart !== Number.MAX_SAFE_INTEGER && scanEnd !== Number.MIN_SAFE_INTEGER) {
+			const updatedProviders = getProvidersForRange(event.document, scanStart, scanEnd)
+			this._tree.insertMany(updatedProviders);
+		}
 	}
 
 	public textDocumentClosed(document: TextDocument) {
@@ -122,6 +124,5 @@ export class GleeceDiagnosticsListener {
 
 	public deactivate(): void {
 		this._diagnosticCollection.clear();
-		this._currentProviders = [];
 	}
 }

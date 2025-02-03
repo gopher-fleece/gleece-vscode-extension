@@ -2,6 +2,8 @@ import json5 from "json5";
 import { AttributeNames } from './enums';
 import { Diagnostic, Position, Range } from 'vscode';
 import { Validators } from './semantics/validators';
+import { diagnosticError } from './diagnostics/helpers';
+import { DiagnosticCode } from './diagnostics/enums';
 
 interface GroupWithIndex {
 	match: string;
@@ -41,15 +43,15 @@ export interface NonAttributeComment {
 export class AttributesProvider {
 	private _attributes: Attribute[] = [];
 	private _nonAttributeComments: NonAttributeComment[] = [];
-	private _coveredRange: Range;
+	private _range: Range;
 	private _lastValidationResult?: Diagnostic[];
 
 	public get lastValidationResult(): Diagnostic[] {
 		return this._lastValidationResult ?? [];
 	}
 
-	public get coveredRange(): Range {
-		return this._coveredRange;
+	public get range(): Range {
+		return this._range;
 	}
 
 	constructor(comments: CommentWithPosition[]) {
@@ -62,7 +64,7 @@ export class AttributesProvider {
 		// We're operating on the assumption comments are ordered and each one spans exactly one line.
 		const firstComment = comments[0];
 		const lastComment = comments[comments.length - 1];
-		this._coveredRange = new Range(
+		this._range = new Range(
 			new Position(firstComment.range.start.line, 0),
 			new Position(lastComment.range.end.line, lastComment.text.length),
 		);
@@ -73,11 +75,11 @@ export class AttributesProvider {
 			return;
 		}
 
-		this._coveredRange = new Range(
-			new Position(this._coveredRange.start.line + offsetLines, 0),
+		this._range = new Range(
+			new Position(this._range.start.line + offsetLines, 0),
 			new Position(
-				this._coveredRange.end.line + offsetLines,
-				this._coveredRange.end.character - this._coveredRange.start.character
+				this._range.end.line + offsetLines,
+				this._range.end.character - this._range.start.character
 			),
 		);
 
@@ -128,10 +130,54 @@ export class AttributesProvider {
 				}
 			}
 		}
-		this._lastValidationResult = errors;
+
+		const methodLevelErrors = this.validateSelf();
+		this._lastValidationResult = errors.concat(methodLevelErrors);
+		return this._lastValidationResult;
+	}
+
+	private validateSelf(): Diagnostic[] {
+		let bodyCount: number = 0;
+		let methodCount: number = 0;
+		let routeCount: number = 0;
+		for (const attrib of this._attributes) {
+			switch (attrib.name) {
+				case AttributeNames.Body:
+					bodyCount++;
+					break;
+				case AttributeNames.Method:
+					methodCount++;
+					break;
+				case AttributeNames.Route:
+					routeCount++;
+					break;
+			}
+		}
+
+		const errors: Diagnostic[] = [];
+	
+		if (bodyCount > 1) {
+			errors.push(this.createTooManyOfXError(AttributeNames.Body));
+		}
+
+		if (methodCount > 1) {
+			errors.push(this.createTooManyOfXError(AttributeNames.Method));
+		}
+
+		if (routeCount > 1) {
+			errors.push(this.createTooManyOfXError(AttributeNames.Route));
+		}
+
 		return errors;
 	}
 
+	private createTooManyOfXError(attributeName: AttributeNames): Diagnostic {
+		return diagnosticError(
+			`A controller method may only have one @${attributeName}`,
+			this.range,
+			DiagnosticCode.MethodLevelTooManyOfAnnotation
+		)
+	}
 
 	// Private method for parsing comments
 	private parseComments(comments: CommentWithPosition[]): void {

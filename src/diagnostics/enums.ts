@@ -9,4 +9,5 @@ export enum DiagnosticCode {
 	AnnotationPropertiesUnknownKey = 'annotation-properties-unknown-key',
 	AnnotationPropertiesInvalidValueForKey = 'annotation-properties-invalid-value-for-key',
 	AnnotationDescriptionShouldExist = 'annotation-description-should-exist',
+	MethodLevelTooManyOfAnnotation = 'method-too-many-of-annotation',
 }

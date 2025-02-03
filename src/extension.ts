@@ -1,5 +1,12 @@
 
-import { CodeActionKind, ExtensionContext, languages, window, workspace } from 'vscode';
+import {
+	CodeActionKind,
+	commands,
+	ExtensionContext,
+	languages,
+	window,
+	workspace
+} from 'vscode';
 import { GleeceProvider } from './gleece.completion.provider';
 import { GoLangId } from './common.constants';
 import { ResourceManager } from './resource.manager';
@@ -41,6 +48,14 @@ export async function activate(context: ExtensionContext) {
 		workspace.onDidOpenTextDocument((document) => diagnosticsListener.fullDiagnostics(document)),
 		workspace.onDidChangeTextDocument((event) => diagnosticsListener.differentialDiagnostics(event)),
 		workspace.onDidCloseTextDocument((document) => diagnosticsListener.textDocumentClosed(document)),
+
+		commands.registerCommand('gleece.reAnalyzeFile', () => {
+			if (window.activeTextEditor) {
+				diagnosticsListener.fullDiagnostics(window.activeTextEditor.document)
+			} else {
+				window.showWarningMessage('Cannot re-analyze - no file is open');
+			}
+		}),
 	);
 
 	// It would appear there might be a delay between when VS Code calls activate and the time
