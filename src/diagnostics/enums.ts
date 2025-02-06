@@ -10,4 +10,5 @@ export enum DiagnosticCode {
 	AnnotationPropertiesInvalidValueForKey = 'annotation-properties-invalid-value-for-key',
 	AnnotationDescriptionShouldExist = 'annotation-description-should-exist',
 	MethodLevelTooManyOfAnnotation = 'method-too-many-of-annotation',
+	MethodLevelMissingRequiredAnnotation = 'method-missing-required-annotation',
 }

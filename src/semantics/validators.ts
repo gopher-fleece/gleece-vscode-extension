@@ -65,7 +65,7 @@ function validateSimpleParam(attribute: Attribute): Diagnostic[] {
 	);
 }
 
-function validateBody(attribute: Attribute, mustHaveMessage?: string): Diagnostic[] {
+function validateBody(attribute: Attribute): Diagnostic[] {
 	return combine(
 		attribute,
 		{

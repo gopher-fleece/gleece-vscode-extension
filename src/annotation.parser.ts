@@ -137,6 +137,12 @@ export class AttributesProvider {
 	}
 
 	private validateSelf(): Diagnostic[] {
+		const attributeCountErrors = this.validateAttributeCounts();
+		const referenceErrors = this.validateReferences();
+		return attributeCountErrors.concat(referenceErrors);
+	}
+
+	private validateAttributeCounts(): Diagnostic[] {
 		let bodyCount: number = 0;
 		let methodCount: number = 0;
 		let routeCount: number = 0;
@@ -155,27 +161,54 @@ export class AttributesProvider {
 		}
 
 		const errors: Diagnostic[] = [];
-	
+
 		if (bodyCount > 1) {
 			errors.push(this.createTooManyOfXError(AttributeNames.Body));
 		}
 
-		if (methodCount > 1) {
-			errors.push(this.createTooManyOfXError(AttributeNames.Method));
+		switch (methodCount) {
+			case 0:
+				errors.push(this.createMissingRequiredAnnotationError(AttributeNames.Method));
+				break;
+			case 1:
+				break;
+			default:
+				errors.push(this.createTooManyOfXError(AttributeNames.Method));
+				break;
 		}
 
-		if (routeCount > 1) {
-			errors.push(this.createTooManyOfXError(AttributeNames.Route));
+		switch (routeCount) {
+			case 0:
+				errors.push(this.createMissingRequiredAnnotationError(AttributeNames.Route));
+				break;
+			case 1:
+				break;
+			default:
+				errors.push(this.createTooManyOfXError(AttributeNames.Route));
+				break;
 		}
 
 		return errors;
 	}
 
+	private validateReferences(): Diagnostic[] {
+		const errors: Diagnostic[] = [];
+		return errors;
+	}
+
 	private createTooManyOfXError(attributeName: AttributeNames): Diagnostic {
 		return diagnosticError(
-			`A controller method may only have one @${attributeName}`,
+			`A controller method may have a maximum of one @${attributeName} annotation`,
 			this.range,
 			DiagnosticCode.MethodLevelTooManyOfAnnotation
+		)
+	}
+
+	private createMissingRequiredAnnotationError(attributeName: AttributeNames): Diagnostic {
+		return diagnosticError(
+			`A controller method must have a @${attributeName} annotation`,
+			this.range,
+			DiagnosticCode.MethodLevelMissingRequiredAnnotation
 		)
 	}
 

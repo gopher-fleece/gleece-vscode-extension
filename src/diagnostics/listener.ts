@@ -83,15 +83,6 @@ export class GleeceDiagnosticsListener {
 
 			const intersections = this._tree.searchAll(change.range);
 			const { before, after } = this._tree.findClosest(change.range);
-			if (after) {
-				const entitiesToShift = this._tree.findAfter(after.range);
-				entitiesToShift.forEach((entity) => {
-					// Have to update the tree or we loose track of the actual ranges
-					this._tree.remove(entity);
-					entity.shiftRange(lineShift);
-					this._tree.insert(entity);
-				});
-			}
 
 			if (before) {
 				this._tree.remove(before);
@@ -100,9 +91,19 @@ export class GleeceDiagnosticsListener {
 			}
 
 			if (after) {
+				// Remove the closes node after the change to make sure we capture everything, even during
+				// comment block merges/splits
 				this._tree.remove(after);
 				scanStart = Math.min(after.range.start.line - lineShiftAbs, scanStart);
 				scanEnd = Math.max(after.range.end.line + lineShiftAbs + 1, scanEnd);
+
+				const entitiesToShift = this._tree.findAfter(after.range);
+				entitiesToShift.forEach((entity) => {
+					// Have to update the tree or we loose track of the actual ranges
+					this._tree.remove(entity);
+					entity.shiftRange(lineShift);
+					this._tree.insert(entity);
+				});
 			}
 
 			for (const provider of intersections) {

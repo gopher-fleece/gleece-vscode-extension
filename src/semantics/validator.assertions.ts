@@ -73,7 +73,8 @@ export function valueMustBeNumeric(attribute: Attribute, mustHaveMessage?: strin
 }
 
 export function valueMustBeValidRoute(attribute: Attribute, mustHaveMessage?: string): Diagnostic[] {
-	if (!/^\/(?:(?:[\w\-_]+)|(?:\{[\w\-_]+\}))(?:\/(?:(?:[\w\-_]+)|(?:\{[\w\-_]+\})))*$/.exec(attribute.value ?? '')) {
+	/// Matches any sub URL that starts with '/' including empty ones
+	if (!/^\/((?:(?:[\w\-_]+)|(?:\{[\w\-_]+\}))(?:\/(?:(?:[\w\-_]+)|(?:\{[\w\-_]+\})))*)*$/.exec(attribute.value ?? '')) {
 		return [
 			diagnosticError(
 				mustHaveMessage ?? `${attribute.name} annotation annotations may only contain URLs and must start with '/'`,
