@@ -1,4 +1,4 @@
-import IntervalTree from "@flatten-js/interval-tree";
+import IntervalTree from '@flatten-js/interval-tree';
 import { Range } from 'vscode';
 
 
@@ -33,7 +33,7 @@ export class GenericIntervalTree<TEntity extends { range: Range }> {
 	public findClosest(target: Range): { before: TEntity | null; after: TEntity | null } {
 		let before: TEntity | null = null;
 		let after: TEntity | null = null;
-	
+
 		// Find `before` using reverse iteration. This bit kind of makes the whole thing O(n) again which is pretty meh.
 		// Probably need a custom structure instead of an interval tree
 		for (const entity of this._tree.iterate([Number.NEGATIVE_INFINITY, target.start.line]) as TEntity[]) {
@@ -41,7 +41,7 @@ export class GenericIntervalTree<TEntity extends { range: Range }> {
 				before = entity; // Keep the last valid one
 			}
 		}
-	
+
 		// Find `after` using forward iteration
 		for (const entity of this._tree.iterate([target.end.line, target.end.line])) {
 			if (entity.range.start.line > target.end.line) {
@@ -49,8 +49,26 @@ export class GenericIntervalTree<TEntity extends { range: Range }> {
 				break; // Stop early after first valid `after`
 			}
 		}
-	
+
 		return { before, after };
+	}
+
+
+	public findOneImmediatelyAfter(target: Range): TEntity | undefined {
+		const iterator = this._tree.iterate([target.end.line, target.end.line]);
+
+		for (const entity of iterator) {
+			if (entity.range.start.line === target.end.line + 1) {
+				return entity;
+			}
+			if (entity.range.start.line > target.end.line + 1) {
+				// If we got here, it means there's no entity adjacent to target.end.line
+				// meaning we can break early (no match)
+				break;
+			}
+		}
+
+		return undefined;
 	}
 
 	public findAfter(target: Range): TEntity[] {

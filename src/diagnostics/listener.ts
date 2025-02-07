@@ -5,15 +5,18 @@ import {
 	TextDocument,
 	TextDocumentChangeEvent,
 } from 'vscode';
-import { getProvidersForRange } from '../attribute.provider';
+import { getProvidersForRange, getProvidersForSymbols } from '../attribute.provider';
 import { GoLangId } from '../common.constants';
 import { AttributesProvider } from '../annotation.parser';
 import { resourceManager } from '../extension';
 import { GenericIntervalTree } from './interval.tree';
 import { configManager } from '../configuration/config.manager';
 import { AnalysisMode } from '../configuration/extension.config';
+import { GolangSymbolicAnalyzer } from '../symbolic-analysis/symbolic.analyzer';
 
 export class GleeceDiagnosticsListener {
+	private _symbolicAnalyzers: GolangSymbolicAnalyzer[] = [];
+
 	private _diagnosticCollection: DiagnosticCollection;
 	private _tree: GenericIntervalTree<AttributesProvider>;
 
@@ -23,12 +26,29 @@ export class GleeceDiagnosticsListener {
 		this._tree = new GenericIntervalTree();
 	}
 
-	public fullDiagnostics(document: TextDocument): void {
+	public async fullDiagnostics(document: TextDocument): Promise<void> {
 		if (document.languageId !== GoLangId) {
 			return;
 		}
 
+		let diagnostics: Diagnostic[];
+		if (configManager.getExtensionConfigValue('analysis.enableSymbolicAwareness')) {
+			diagnostics = await this.fullDiagnosticsWithSymbolicAnalysis(document);
+		} else {
+			diagnostics = await this.fullDiagnosticsSlim(document);
+		}
+
 		this._tree.clear();
+
+		this._diagnosticCollection.clear();
+		this._diagnosticCollection.set(document.uri, diagnostics);
+	}
+
+	public async fullDiagnosticsSlim(document: TextDocument): Promise<Diagnostic[]> {
+		if (document.languageId !== GoLangId) {
+			return [];
+		}
+
 		const diagnostics: Diagnostic[] = [];
 
 		const providers = getProvidersForRange(document);
@@ -39,12 +59,46 @@ export class GleeceDiagnosticsListener {
 			}
 		}
 
-		this._diagnosticCollection.clear();
-
-		this._diagnosticCollection.set(document.uri, diagnostics);
+		return diagnostics;
 	}
 
-	public differentialDiagnostics(event: TextDocumentChangeEvent): void {
+	public async fullDiagnosticsWithSymbolicAnalysis(document: TextDocument): Promise<Diagnostic[]> {
+		const diagnostics: Diagnostic[] = [];
+
+		// Currently always refreshing the analyzer- keeping track of changes to this degree would be quite complex.
+		// Not ideal but good enough for now.
+		const analyzer = await this.getAnalyzerForDocument(document, true);
+
+		const providers = getProvidersForSymbols(document, analyzer.symbols);
+		for (const provider of providers) {
+			this._tree.insert(provider);
+			if (!provider.isEmpty()) {
+				diagnostics.push(...provider.getDiagnostics());
+			}
+		}
+
+		return diagnostics;
+	}
+
+	private async getAnalyzerForDocument(document: TextDocument, fresh: boolean): Promise<GolangSymbolicAnalyzer> {
+		const maxAnalyzersInCache = 5;
+
+		const idx = this._symbolicAnalyzers.findIndex((analyzer) => analyzer.documentUri === document.uri);
+		if (!idx || fresh) {
+			const analyzer = new GolangSymbolicAnalyzer(document);
+			await analyzer.analyze();
+
+			if (this._symbolicAnalyzers.length > maxAnalyzersInCache) {
+				this._symbolicAnalyzers.splice(0, 1);
+			}
+			this._symbolicAnalyzers.push(analyzer);
+			return analyzer;
+		}
+
+		return this._symbolicAnalyzers[idx];
+	}
+
+	public async differentialDiagnostics(event: TextDocumentChangeEvent): Promise<void> {
 		if (event.document.languageId !== GoLangId) {
 			return;
 		}

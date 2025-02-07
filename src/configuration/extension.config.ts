@@ -11,5 +11,6 @@ export interface GleeceExtensionConfig {
 	},
 	analysis: {
 		mode: AnalysisMode;
+		enableSymbolicAwareness: boolean;
 	}
 }

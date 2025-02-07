@@ -1,5 +1,6 @@
 import { TextDocument, Position } from 'vscode';
 import { AttributesProvider, CommentWithPosition } from './annotation.parser';
+import { GolangSymbol } from './symbolic-analysis/symbolic.analyzer';
 
 export function getAttributesProvider(document: TextDocument, position: Position): AttributesProvider {
 	// Extract comments relevant to the cursor (above and below), including their line positions
@@ -49,52 +50,81 @@ function getSurroundingComments(document: TextDocument, position: Position): Com
 	return comments;
 }
 
+export function getProvidersForSymbols(document: TextDocument, symbols: GolangSymbol[]): AttributesProvider[] {
+	const providers: AttributesProvider[] = [];
+	for (const symbol of symbols) {
+		const provider = getProviderForSymbol(document, symbol);
+		if (provider) {
+			providers.push(provider);
+		}
+	}
+	return providers;
+}
+
+export function getProviderForSymbol(document: TextDocument, symbol: GolangSymbol): AttributesProvider | undefined {
+	if (!document.lineAt(symbol.range.start.line - 1).text.trim().startsWith('//')) {
+		return undefined;
+	}
+
+	const comments: CommentWithPosition[] = [];
+	let currentLine = symbol.range.start.line - 1; // Start scanning upwards
+
+	// Scan upwards for contiguous comment lines
+	while (currentLine >= 0) {
+		const line = document.lineAt(currentLine);
+		const trimmed = line.text.trim();
+
+		// Stop if we hit non-comment code or an empty line
+		if (!trimmed.startsWith('//')) {
+			break;
+		}
+
+		// Insert at the start to preserve order
+		comments.unshift({
+			text: trimmed,
+			range: line.range,
+			startIndex: line.firstNonWhitespaceCharacterIndex,
+		});
+
+		currentLine--;
+	}
+
+	// If no comments were found, return undefined
+	if (comments.length === 0) {
+		return undefined;
+	}
+
+	return new AttributesProvider(comments, symbol);
+}
 export function getProvidersForRange(document: TextDocument, startLine?: number, endLine?: number): AttributesProvider[] {
-	const commentBlocks: { startLine: number; endLine: number }[] = [];
-	let currentBlockStart = -1;
+	const providers: AttributesProvider[] = [];
+	let comments: CommentWithPosition[] = [];
 
 	const scanStart = startLine ?? 0;
 	const scanEnd = endLine ?? document.lineCount;
 
-	// Scan the document line by line, starting at the range's start
 	for (let i = scanStart; i < scanEnd; i++) {
-		const line = document.lineAt(i).text.trimStart();
+		const line = document.lineAt(i);
+		const trimmedText = line.text.trimStart();
 
-		// If it's a comment line
-		if (line.startsWith("//")) {
-			// Start a new block if we're not already in one
-			if (currentBlockStart === -1) {
-				currentBlockStart = i;
-			}
-		} else {
-			// If we're ending a comment block, record its range
-			if (currentBlockStart !== -1) {
-				commentBlocks.push({ startLine: currentBlockStart, endLine: i - 1 });
-				currentBlockStart = -1;
-			}
-		}
-	}
-
-	// Handle a trailing comment block
-	if (currentBlockStart !== -1) {
-		commentBlocks.push({ startLine: currentBlockStart, endLine: scanEnd - 1 });
-	}
-
-	// Parse comment blocks into `AttributesProvider`
-	return commentBlocks.map(({ startLine, endLine }) => {
-		const comments: CommentWithPosition[] = [];
-
-		for (let i = startLine; i <= endLine; i++) {
-			const line = document.lineAt(i);
-			const trimmedText = line.text.trimStart();
-
+		if (trimmedText.startsWith("//")) {
+			// Collect comment line
 			comments.push({
-				text: trimmedText.trim(),
+				text: trimmedText,
 				range: line.range,
 				startIndex: line.text.length - trimmedText.length, // Leading whitespace offset
 			});
+		} else if (comments.length > 0) {
+			// If we hit a non-comment and had collected comments, create a provider
+			providers.push(new AttributesProvider(comments));
+			comments = []; // Reset for the next block
 		}
+	}
 
-		return new AttributesProvider(comments);
-	});
+	// Final block handling
+	if (comments.length > 0) {
+		providers.push(new AttributesProvider(comments));
+	}
+
+	return providers;
 }

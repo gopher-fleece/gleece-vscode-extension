@@ -103,7 +103,7 @@
 				"gleece.config.path": {
 					"type": "string",
 					"default": "./gleece.config.json",
-					"description": "Path to the project's gleece.config.json"
+					"description": "Path to the project's gleece.config.json.\nIf set incorrectly, the Gleece extension will not be able to provide certain hints or diagnostics"
 				},
 				"gleece.analysis.mode": {
 					"type": "string",
@@ -117,6 +117,11 @@
 						"Analyzes the entire code file on every change. Robust but more resource intensive",
 						"Analyzes only changed code regions. Faster but may be more error prone"
 					]
+				},
+				"gleece.analysis.enableSymbolicAwareness": {
+					"type": "boolean",
+					"default": true,
+					"description": "Determines whether symbolic analysis is enabled.\nSymbolic analysis provides context awareness and improved hints at the cost of computational overhead."
 				}
 			}
 		},

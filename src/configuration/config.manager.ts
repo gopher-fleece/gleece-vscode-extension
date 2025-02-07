@@ -39,6 +39,10 @@ class ConfigManager {
 
 		resourceManager.registerDisposable(
 			workspace.onDidChangeConfiguration(async (event) => {
+				if (event.affectsConfiguration('gleece')) {
+					this._extensionConfig = workspace.getConfiguration(ExtensionRootNamespace);
+				}
+
 				if (event.affectsConfiguration('gleece.config.path')) {
 					await this.loadGleeceConfig();
 					await this.initGleeceConfigWatcher();

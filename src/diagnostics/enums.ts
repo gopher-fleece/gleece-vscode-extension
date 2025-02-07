@@ -11,4 +11,8 @@ export enum DiagnosticCode {
 	AnnotationDescriptionShouldExist = 'annotation-description-should-exist',
 	MethodLevelTooManyOfAnnotation = 'method-too-many-of-annotation',
 	MethodLevelMissingRequiredAnnotation = 'method-missing-required-annotation',
+	MethodLevelAnnotationNotAllowed = 'controller-annotation-not-allowed',
+
+	ControllerLevelMissingTag = 'controller-missing-tag',	
+	ControllerLevelAnnotationNotAllowed = 'controller-annotation-not-allowed',
 }
