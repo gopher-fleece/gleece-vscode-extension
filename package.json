@@ -114,8 +114,8 @@
 					"default": "full",
 					"description": "Specifies the analysis mode.",
 					"enumDescriptions": [
-						"Full scan: Analyzes the entire code file on every change. Robust but more resource intensive",
-						"Differential scan: Analyzes only changed code region. Faster but may be more error prone"
+						"Analyzes the entire code file on every change. Robust but more resource intensive",
+						"Analyzes only changed code regions. Faster but may be more error prone"
 					]
 				}
 			}

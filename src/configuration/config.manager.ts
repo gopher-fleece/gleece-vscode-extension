@@ -6,7 +6,7 @@ import {
 	workspace,
 	WorkspaceConfiguration
 } from 'vscode';
-import { GleeceExtensionConfig } from './extension.config';
+import { ExtensionRootNamespace, GleeceExtensionConfig } from './extension.config';
 import { GleeceConfig } from './gleece.config';
 import { readFile } from 'fs/promises';
 import { resourceManager } from '../extension';
@@ -34,7 +34,7 @@ class ConfigManager {
 	}
 
 	public async init() {
-		this._extensionConfig = workspace.getConfiguration('gleece.extension');
+		this._extensionConfig = workspace.getConfiguration(ExtensionRootNamespace);
 		await this.loadGleeceConfig();
 
 		resourceManager.registerDisposable(
@@ -54,7 +54,7 @@ class ConfigManager {
 	}
 
 	private async loadGleeceConfig(): Promise<void> {
-		const configPath = this.getExtensionConfigValue('gleece.config.path') ?? 'gleece.config.json';
+		const configPath = this.getExtensionConfigValue('config.path') ?? 'gleece.config.json';
 		const { error, data } = await this.loadFile(configPath);
 		if (error) {
 			window.showErrorMessage(`Failed to load configuration file: ${(error as any)?.message}`);
@@ -98,7 +98,7 @@ class ConfigManager {
 		}
 
 		// Get the current config file path
-		const configPath = this.getExtensionConfigValue('gleece.config.path') ?? 'gleece.config.json';
+		const configPath = this.getExtensionConfigValue('config.path') ?? 'gleece.config.json';
 		const absPath = Uri.file(this.resolvePathFromWorkspace(configPath) ?? configPath);
 
 		// Create a new watcher

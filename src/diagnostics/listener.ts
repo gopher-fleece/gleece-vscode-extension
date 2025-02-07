@@ -55,7 +55,7 @@ export class GleeceDiagnosticsListener {
 
 		// This could be re-written as a private state mutated by an event.
 		// A bit overkill for now though.
-		if (configManager.getExtensionConfigValue('gleece.analysis.mode') === AnalysisMode.Full) {
+		if (configManager.getExtensionConfigValue('analysis.mode') === AnalysisMode.Full) {
 			// Route the flow to the full diagnostics instead of the smarted albeit (probably) flawed differential flow
 			return this.fullDiagnostics(event.document);
 		}
