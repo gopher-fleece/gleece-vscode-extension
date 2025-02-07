@@ -17,16 +17,27 @@ export abstract class GolangSymbol {
 	public constructor(public readonly symbol: DocumentSymbol) { }
 }
 
+export interface ReceiverParameter {
+	name: string;
+	typeName: string;
+}
+
+export interface ReceiverReturnValue {
+	typeName: string;
+}
+
 export class GolangReceiver extends GolangSymbol {
 	public readonly name: string;
 	public readonly isByRef: boolean;
 	public readonly ownerStructName: string;
+	public readonly parameters: ReceiverParameter[];
+	public readonly returnTypes: ReceiverReturnValue[];
 
 	public get type(): GolangSymbolType {
 		return GolangSymbolType.Receiver;
 	}
 
-	public constructor(symbol: DocumentSymbol) {
+	public constructor(document: TextDocument, symbol: DocumentSymbol) {
 		super(symbol);
 
 		const match = symbol.name.match(/^\((?<isByRef>\*)?(?<typeName>\w+)\)\.(?<methodName>.+)/);
@@ -41,6 +52,39 @@ export class GolangReceiver extends GolangSymbol {
 		this.name = name;
 		this.ownerStructName = ownerStructName;
 		this.isByRef = isByRef;
+		const { parameters, returnTypes } = this.extractParamsAndRetVal(document);
+
+		this.parameters = parameters;
+		this.returnTypes = returnTypes;
+	}
+
+	private extractParamsAndRetVal(document: TextDocument): { parameters: ReceiverParameter[], returnTypes: ReceiverReturnValue[] } {
+		const decl = document.getText(this.symbol.range).trim().replace(/(?:[\r\n])|\n|\t/igm, ' ');
+		const matches = /func\s+\(.+?\)\s+[A-Za-z_][A-Za-z0-9_]*\((?<sig>.+?)?\)\s*(?<ret>(?:[A-Za-z_][A-Za-z0-9_]*)|(?:\(.+\)))?/.exec(decl);
+
+		const sig = matches?.groups?.['sig']?.trim()?.replace(/^\(|\)$/igm, '');
+		const ret = matches?.groups?.['ret']?.trim()?.replace(/^\(|\)$/igm, '');
+
+		let parameters: ReceiverParameter[] = [];
+		let returnTypes: ReceiverReturnValue[] = [];
+
+		if (sig) {
+			const trimmedParts = sig.split(',').map((part) => part.trim());
+			for (const arg of trimmedParts) {
+				if (!arg || /^\s*$/.test(arg)) {
+					continue; // Empty arg- parsing junk
+				}
+				const [name, typeName] = arg.split(' ').map((part) => part.trim());
+				parameters.push({ name, typeName });
+			}
+		}
+
+		if (ret) {
+			const trimmedParts = ret.split(',').map((part) => part.trim());
+			trimmedParts.forEach((typeName) => returnTypes.push({ typeName }));
+		}
+
+		return { parameters, returnTypes };
 	}
 }
 
@@ -104,7 +148,7 @@ export class GolangSymbolicAnalyzer {
 				case SymbolKind.Method:
 					const isReceiver = /^\(\*?(?:\w+)\)\./.test(symbol.name);
 					if (isReceiver) {
-						const receiver = new GolangReceiver(symbol);
+						const receiver = new GolangReceiver(this._document, symbol);
 						entity = receiver;
 						if (!this._receivers.has(receiver.ownerStructName)) {
 							this._receivers.set(receiver.ownerStructName, [receiver]);
