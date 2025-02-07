@@ -105,7 +105,7 @@ function validateSecurity(attribute: Attribute): Diagnostic[] {
 						if (!validSchemaName) {
 							return [diagnosticError(
 								`Schema '${attribute.value}' is not specified in ` +
-								`${configManager.getExtensionConfigValue('gleeceConfigPath')}.\n` +
+								`${configManager.getExtensionConfigValue('gleece.config.path')}.\n` +
 								`Known schemas are: ${configManager.securitySchemaNames.join(', ')}`,
 								attribute.valueRange!,
 								DiagnosticCode.AnnotationPropertiesInvalidValueForKey

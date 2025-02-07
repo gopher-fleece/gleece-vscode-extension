@@ -1,3 +1,15 @@
+export enum AnalysisMode {
+	Full = 'full',
+	Differential = 'differential',
+}
+
 export interface GleeceExtensionConfig {
-	gleeceConfigPath: string;
+	gleece: {
+		config: {
+			path: string;
+		},
+		analysis: {
+			mode: AnalysisMode;
+		}
+	}
 }

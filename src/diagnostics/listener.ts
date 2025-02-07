@@ -10,6 +10,8 @@ import { GoLangId } from '../common.constants';
 import { AttributesProvider } from '../annotation.parser';
 import { resourceManager } from '../extension';
 import { GenericIntervalTree } from './interval.tree';
+import { configManager } from '../configuration/config.manager';
+import { AnalysisMode } from '../configuration/extension.config';
 
 export class GleeceDiagnosticsListener {
 	private _diagnosticCollection: DiagnosticCollection;
@@ -51,6 +53,12 @@ export class GleeceDiagnosticsListener {
 			return;
 		}
 
+		// This could be re-written as a private state mutated by an event.
+		// A bit overkill for now though.
+		if (configManager.getExtensionConfigValue('gleece.analysis.mode') === AnalysisMode.Full) {
+			// Route the flow to the full diagnostics instead of the smarted albeit (probably) flawed differential flow
+			return this.fullDiagnostics(event.document);
+		}
 
 		this.updateProviders(event);
 

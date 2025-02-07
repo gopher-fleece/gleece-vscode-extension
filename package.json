@@ -100,10 +100,23 @@
 			"type": "object",
 			"title": "Gleece Extension Configuration",
 			"properties": {
-				"gleece.extension.gleeceConfigPath": {
+				"gleece.config.path": {
 					"type": "string",
 					"default": "./gleece.config.json",
 					"description": "Path to the project's gleece.config.json"
+				},
+				"gleece.analysis.mode": {
+					"type": "string",
+					"enum": [
+						"full",
+						"differential"
+					],
+					"default": "full",
+					"description": "Specifies the analysis mode.",
+					"enumDescriptions": [
+						"Full scan: Analyzes the entire code file on every change. Robust but more resource intensive",
+						"Differential scan: Analyzes only changed code region. Faster but may be more error prone"
+					]
 				}
 			}
 		},
