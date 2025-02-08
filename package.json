@@ -31,10 +31,6 @@
 		"API",
 		"Rest API"
 	],
-	"activationEvents": [
-		"onLanguage:go",
-		"onLanguage:golang"
-	],
 	"main": "./dist/extension.js",
 	"repository": {
 		"type": "git",
@@ -73,6 +69,7 @@
 		"webpack-cli": "^5.1.4"
 	},
 	"dependencies": {
+		"@flatten-js/interval-tree": "^1.1.3",
 		"json5": "^2.2.3",
 		"lodash.debounce": "^4.0.8",
 		"simple-git": "^3.22.0"
@@ -103,12 +100,41 @@
 			"type": "object",
 			"title": "Gleece Extension Configuration",
 			"properties": {
-				"gleece.extension.gleeceConfigPath": {
+				"gleece.config.path": {
 					"type": "string",
 					"default": "./gleece.config.json",
-					"description": "Path to the project's gleece.config.json"
+					"description": "Path to the project's gleece.config.json.\nIf set incorrectly, the Gleece extension will not be able to provide certain hints or diagnostics"
+				},
+				"gleece.analysis.mode": {
+					"type": "string",
+					"enum": [
+						"full",
+						"differential"
+					],
+					"default": "full",
+					"description": "Specifies the analysis mode.",
+					"enumDescriptions": [
+						"Analyzes the entire code file on every change. Robust but more resource intensive",
+						"Analyzes only changed code regions. Faster but may be more error prone"
+					]
+				},
+				"gleece.analysis.enableSymbolicAwareness": {
+					"type": "boolean",
+					"default": true,
+					"description": "Determines whether symbolic analysis is enabled.\nSymbolic analysis provides context awareness and improved hints at the cost of computational overhead."
 				}
 			}
-		}
-	}
+		},
+		"commands": [
+			{
+				"command": "gleece.reAnalyzeFile",
+				"title": "Gleece: Re-analyze current file",
+				"when": "editorLangId == go"
+			}
+		]
+	},
+	"activationEvents": [
+		"onLanguage:go",
+		"onLanguage:golang"
+	]
 }

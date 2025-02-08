@@ -1,3 +1,16 @@
+export enum AnalysisMode {
+	Full = 'full',
+	Differential = 'differential',
+}
+
+export const ExtensionRootNamespace = 'gleece';
+
 export interface GleeceExtensionConfig {
-	gleeceConfigPath: string;
+	config: {
+		path: string;
+	},
+	analysis: {
+		mode: AnalysisMode;
+		enableSymbolicAwareness: boolean;
+	}
 }

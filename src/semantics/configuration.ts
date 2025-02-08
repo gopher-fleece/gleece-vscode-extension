@@ -1,4 +1,4 @@
-import { Attribute } from '../annotation.parser';
+import { Attribute } from '../annotation/annotation.provider';
 import { AttributeNames } from '../enums';
 import { validateProperties } from './helpers';
 import { PropertyValidation, PropertyValidationConfig, Validation } from './types';

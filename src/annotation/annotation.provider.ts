@@ -1,7 +1,16 @@
 import json5 from "json5";
-import { AttributeNames } from './enums';
+import { AttributeNames, KnownJsonProperties } from '../enums';
 import { Diagnostic, Position, Range } from 'vscode';
-import { Validators } from './semantics/validators';
+import { Validators } from '../semantics/validators';
+import { diagnosticError, diagnosticWarning } from '../diagnostics/helpers';
+import { DiagnosticCode } from '../diagnostics/enums';
+import { GolangSymbol, GolangSymbolType } from '../symbolic-analysis/golang.common';
+import { GolangStruct } from '../symbolic-analysis/gonlang.struct';
+import { ReceiverValidator } from './validation/receiver.validator';
+import { GolangReceiver } from '../symbolic-analysis/golang.receiver';
+import { StructValidator } from './validation/struct.validator';
+import { combineRanges } from '../utils/range.utils';
+import { getAttributeRange } from './annotation.functional';
 
 interface GroupWithIndex {
 	match: string;
@@ -38,31 +47,36 @@ export interface NonAttributeComment {
 	range: Range;
 }
 
-export class AttributesProvider {
+type AttributeCounts = { [Key in AttributeNames]: number };
+
+export class AnnotationProvider {
+	private _symbol?: GolangSymbol;
 	private _attributes: Attribute[] = [];
+	private _attributeCounts?: AttributeCounts;
 	private _nonAttributeComments: NonAttributeComment[] = [];
-	private _coveredRange: Range;
+	private _range: Range;
 	private _lastValidationResult?: Diagnostic[];
 
 	public get lastValidationResult(): Diagnostic[] {
 		return this._lastValidationResult ?? [];
 	}
 
-	public get coveredRange(): Range {
-		return this._coveredRange;
+	public get range(): Range {
+		return this._range;
 	}
 
-	constructor(comments: CommentWithPosition[]) {
+	public constructor(comments: CommentWithPosition[], associatedSymbol?: GolangSymbol) {
 		if (comments.length <= 0) {
 			throw new Error("AttributeProvider called with no comments");
 		}
 
+		this._symbol = associatedSymbol;
 		this.parseComments(comments);
 
 		// We're operating on the assumption comments are ordered and each one spans exactly one line.
 		const firstComment = comments[0];
 		const lastComment = comments[comments.length - 1];
-		this._coveredRange = new Range(
+		this._range = new Range(
 			new Position(firstComment.range.start.line, 0),
 			new Position(lastComment.range.end.line, lastComment.text.length),
 		);
@@ -73,11 +87,11 @@ export class AttributesProvider {
 			return;
 		}
 
-		this._coveredRange = new Range(
-			new Position(this._coveredRange.start.line + offsetLines, 0),
+		this._range = new Range(
+			new Position(this._range.start.line + offsetLines, 0),
 			new Position(
-				this._coveredRange.end.line + offsetLines,
-				this._coveredRange.end.character - this._coveredRange.start.character
+				this._range.end.line + offsetLines,
+				this._range.end.character - this._range.start.character
 			),
 		);
 
@@ -94,14 +108,16 @@ export class AttributesProvider {
 		return !(this._attributes?.length > 0) && !(this._nonAttributeComments.length > 0);
 	}
 
-	// Public method to get the parsed attributes
-	public getAttributes(): Attribute[] {
-		return this._attributes;
+	public hasAttribute(name: AttributeNames): boolean {
+		return !!this.getAttribute(name);
 	}
 
-	// Public method to get the parsed attributes
 	public getAttribute(name: AttributeNames | string): Attribute | undefined {
 		return this._attributes.find((attr) => attr.name === name);
+	}
+
+	public getAttributes(): Attribute[] {
+		return this._attributes;
 	}
 
 	public getAttributeNames(): string[] {
@@ -111,6 +127,75 @@ export class AttributesProvider {
 	// Public method to get non-attribute comments (indexed by line number)
 	public getNonAttributeComments(): NonAttributeComment[] {
 		return this._nonAttributeComments;
+	}
+
+	public findOneByValueOrNameAlias(nameOrAlias: string): Attribute | undefined {
+		for (const attr of this._attributes) {
+			const alias = attr.properties?.[KnownJsonProperties.Name];
+			if ((alias === undefined && attr.value === nameOrAlias) || attr.properties?.[KnownJsonProperties.Name] === nameOrAlias) {
+				return attr;
+			}
+		}
+		return undefined;
+	}
+
+	public findManyByValueOrNameAlias(nameOrAliasList: string[]): { nameOrAlias: string, attribute: Attribute }[] {
+		const matches: { nameOrAlias: string, attribute: Attribute }[] = [];
+
+		for (const nameOrAlias of nameOrAliasList) {
+			for (const attribute of this._attributes) {
+				if (attribute.value === nameOrAlias || attribute.properties?.[KnownJsonProperties.Name] === nameOrAlias) {
+					matches.push({ nameOrAlias, attribute });
+					break;
+				}
+			}
+		}
+		return matches;
+	}
+
+	public findManyByValue(values: string[]): Attribute[] {
+		const matches: Attribute[] = [];
+
+		for (const nameOrAlias of values) {
+			for (const attribute of this._attributes) {
+				if (attribute.value === nameOrAlias) {
+					matches.push(attribute);
+					break;
+				}
+			}
+		}
+		return matches;
+	}
+
+	public getAttributeCounts(): AttributeCounts {
+		// We're treating the whole class as immutable in terms of what annotations it holds.
+		if (this._attributeCounts) {
+			return this._attributeCounts;
+		}
+
+		const counts: AttributeCounts = {
+			Tag: 0,
+			Query: 0,
+			Path: 0,
+			Body: 0,
+			Header: 0,
+			Deprecated: 0,
+			Hidden: 0,
+			Security: 0,
+			AdvancedSecurity: 0,
+			Route: 0,
+			Response: 0,
+			Description: 0,
+			Method: 0,
+			ErrorResponse: 0,
+		};
+
+		for (const attrib of this._attributes) {
+			counts[attrib.name as AttributeNames]++;
+		}
+
+		this._attributeCounts = counts;
+		return counts;
 	}
 
 	public getDiagnostics(withCache?: boolean): Diagnostic[] {
@@ -128,10 +213,43 @@ export class AttributesProvider {
 				}
 			}
 		}
-		this._lastValidationResult = errors;
-		return errors;
+
+		const methodLevelErrors = this.validateSelf();
+		this._lastValidationResult = errors.concat(methodLevelErrors);
+		return this._lastValidationResult;
 	}
 
+	private validateSelf(): Diagnostic[] {
+		const commonIssues = this.validateCommon();
+
+		let specificIssues: Diagnostic[] = [];
+		switch (this._symbol?.type) {
+			case GolangSymbolType.Struct:
+				specificIssues = this.validateStruct();
+				break;
+			case GolangSymbolType.Receiver:
+				specificIssues = this.validateReceiver();
+				break;
+			default:
+				break;
+		}
+
+		return commonIssues.concat(specificIssues);
+	}
+
+	private validateCommon(): Diagnostic[] {
+		return [];
+	}
+
+	private validateStruct(): Diagnostic[] {
+		const validator = new StructValidator(this._symbol as GolangStruct, this);
+		return validator.validate();
+	}
+
+	private validateReceiver(): Diagnostic[] {
+		const validator = new ReceiverValidator(this._symbol as GolangReceiver, this);
+		return validator.validate();
+	}
 
 	// Private method for parsing comments
 	private parseComments(comments: CommentWithPosition[]): void {

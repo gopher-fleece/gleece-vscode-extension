@@ -1,5 +1,5 @@
 import { Diagnostic, DiagnosticSeverity, Range } from 'vscode';
-import { Attribute } from '../annotation.parser';
+import { Attribute } from '../annotation/annotation.provider';
 import { AttributeNames } from '../enums';
 import { KNOWN_PROPERTIES } from './configuration';
 import { Validation, PropertyValidation, ValidationSequences } from './types';

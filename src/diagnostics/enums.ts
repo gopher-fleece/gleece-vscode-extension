@@ -9,4 +9,13 @@ export enum DiagnosticCode {
 	AnnotationPropertiesUnknownKey = 'annotation-properties-unknown-key',
 	AnnotationPropertiesInvalidValueForKey = 'annotation-properties-invalid-value-for-key',
 	AnnotationDescriptionShouldExist = 'annotation-description-should-exist',
+	MethodLevelTooManyOfAnnotation = 'method-too-many-of-annotation',
+	MethodLevelMissingRequiredAnnotation = 'method-missing-required-annotation',
+	MethodLevelAnnotationNotAllowed = 'controller-annotation-not-allowed',
+	MethodLevelMissingParamAnnotation = 'method-missing-param-annotation',
+	MethodLevelConflictingSchemaEntityAnnotation = 'method-conflicting-schema-entity-annotation',
+	MethodLevelConflictingParamAnnotation = 'method-conflicting-param-annotation',
+
+	ControllerLevelMissingTag = 'controller-missing-tag',
+	ControllerLevelAnnotationNotAllowed = 'controller-annotation-not-allowed',
 }
