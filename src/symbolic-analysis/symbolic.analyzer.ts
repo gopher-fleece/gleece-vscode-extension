@@ -51,8 +51,11 @@ export class GolangSymbolicAnalyzer {
 		for (const symbol of symbols) {
 			switch (symbol.kind) {
 				case SymbolKind.Struct:
-					entity = new GolangStruct(symbol);
-					this._structs.set(symbol.name, entity);
+					const maybeController = new GolangStruct(symbol);
+					if (maybeController.isController) {
+						entity = maybeController;
+						this._structs.set(symbol.name, entity);
+					}
 					break;
 				case SymbolKind.Method:
 					const isReceiver = /^\(\*?(?:\w+)\)\./.test(symbol.name);
