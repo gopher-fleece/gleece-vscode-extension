@@ -5,9 +5,9 @@ import {
 	TextDocument,
 	TextDocumentChangeEvent,
 } from 'vscode';
-import { getProvidersForRange, getProvidersForSymbols } from '../attribute.provider';
+import { getProvidersForRange, getProvidersForSymbols } from '../annotation/annotation.functional';
 import { GoLangId } from '../common.constants';
-import { AttributesProvider } from '../annotation.parser';
+import { AnnotationProvider } from '../annotation/annotation.provider';
 import { resourceManager } from '../extension';
 import { GenericIntervalTree } from './interval.tree';
 import { configManager } from '../configuration/config.manager';
@@ -18,7 +18,7 @@ export class GleeceDiagnosticsListener {
 	private _symbolicAnalyzers: GolangSymbolicAnalyzer[] = [];
 
 	private _diagnosticCollection: DiagnosticCollection;
-	private _tree: GenericIntervalTree<AttributesProvider>;
+	private _tree: GenericIntervalTree<AnnotationProvider>;
 
 	public constructor() {
 		this._diagnosticCollection = languages.createDiagnosticCollection('gleece');

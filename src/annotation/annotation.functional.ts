@@ -1,13 +1,11 @@
-import { TextDocument, Position } from 'vscode';
-import { AttributesProvider, CommentWithPosition } from './annotation.parser';
-import { GolangSymbol } from './symbolic-analysis/symbolic.analyzer';
+import { TextDocument, Position, Range } from 'vscode';
+import { AnnotationProvider, Attribute, CommentWithPosition } from './annotation.provider';
+import { GolangSymbol } from '../symbolic-analysis/golang.common';
 
-export function getAttributesProvider(document: TextDocument, position: Position): AttributesProvider {
+export function getAnnotationProvider(document: TextDocument, position: Position): AnnotationProvider {
 	// Extract comments relevant to the cursor (above and below), including their line positions
 	const comments = getSurroundingComments(document, position);
-
-	// Switch context
-	return new AttributesProvider(comments);
+	return new AnnotationProvider(comments);
 }
 
 function getSurroundingComments(document: TextDocument, position: Position): CommentWithPosition[] {
@@ -50,8 +48,8 @@ function getSurroundingComments(document: TextDocument, position: Position): Com
 	return comments;
 }
 
-export function getProvidersForSymbols(document: TextDocument, symbols: GolangSymbol[]): AttributesProvider[] {
-	const providers: AttributesProvider[] = [];
+export function getProvidersForSymbols(document: TextDocument, symbols: GolangSymbol[]): AnnotationProvider[] {
+	const providers: AnnotationProvider[] = [];
 	for (const symbol of symbols) {
 		const provider = getProviderForSymbol(document, symbol);
 		if (provider) {
@@ -61,7 +59,7 @@ export function getProvidersForSymbols(document: TextDocument, symbols: GolangSy
 	return providers;
 }
 
-export function getProviderForSymbol(document: TextDocument, symbol: GolangSymbol): AttributesProvider | undefined {
+export function getProviderForSymbol(document: TextDocument, symbol: GolangSymbol): AnnotationProvider | undefined {
 	if (!document.lineAt(symbol.range.start.line - 1).text.trim().startsWith('//')) {
 		return undefined;
 	}
@@ -94,10 +92,10 @@ export function getProviderForSymbol(document: TextDocument, symbol: GolangSymbo
 		return undefined;
 	}
 
-	return new AttributesProvider(comments, symbol);
+	return new AnnotationProvider(comments, symbol);
 }
-export function getProvidersForRange(document: TextDocument, startLine?: number, endLine?: number): AttributesProvider[] {
-	const providers: AttributesProvider[] = [];
+export function getProvidersForRange(document: TextDocument, startLine?: number, endLine?: number): AnnotationProvider[] {
+	const providers: AnnotationProvider[] = [];
 	let comments: CommentWithPosition[] = [];
 
 	const scanStart = startLine ?? 0;
@@ -116,15 +114,28 @@ export function getProvidersForRange(document: TextDocument, startLine?: number,
 			});
 		} else if (comments.length > 0) {
 			// If we hit a non-comment and had collected comments, create a provider
-			providers.push(new AttributesProvider(comments));
+			providers.push(new AnnotationProvider(comments));
 			comments = []; // Reset for the next block
 		}
 	}
 
 	// Final block handling
 	if (comments.length > 0) {
-		providers.push(new AttributesProvider(comments));
+		providers.push(new AnnotationProvider(comments));
 	}
 
 	return providers;
+}
+
+export function getAttributeRange(attribute: Attribute): Range {
+	// Should re-write Attribute to a class...
+
+	// A bit awkward but we need to take up until the end of the attribute line which is not tracked in the attribute interface itself.
+	const endRange = attribute.descriptionRange ?? attribute.propertiesRange ?? attribute.valueRange ?? attribute.nameRange;
+	return new Range(
+		attribute.nameRange.start.line,
+		0,
+		endRange.end.line,
+		endRange.end.character
+	);
 }

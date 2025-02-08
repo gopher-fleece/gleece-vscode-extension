@@ -12,7 +12,7 @@ import {
 	HoverProvider,
 } from 'vscode';
 import { AttributeDescriptions, AttributeNames, AttributeNamesCompletionObjects, RepeatableAttributes } from './enums';
-import { getAttributesProvider } from './attribute.provider';
+import { getAnnotationProvider } from './annotation/annotation.functional';
 
 export class GleeceProvider implements CompletionItemProvider, HoverProvider {
 
@@ -31,7 +31,7 @@ export class GleeceProvider implements CompletionItemProvider, HoverProvider {
 			return undefined;
 		}
 
-		const provider = getAttributesProvider(document, position);
+		const provider = getAnnotationProvider(document, position);
 
 		const existingAttribNames = provider.getAttributeNames();
 		const relevantCompletions = AttributeNamesCompletionObjects.filter((obj) => {
@@ -61,7 +61,7 @@ export class GleeceProvider implements CompletionItemProvider, HoverProvider {
 			return undefined;
 		}
 
-		const provider = getAttributesProvider(document, position);
+		const provider = getAnnotationProvider(document, position);
 
 		const attribute = provider.getAttribute(matches[1]);
 

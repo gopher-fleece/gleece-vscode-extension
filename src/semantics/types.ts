@@ -1,5 +1,5 @@
 import { Diagnostic } from 'vscode';
-import { Attribute } from '../annotation.parser';
+import { Attribute } from '../annotation/annotation.provider';
 
 export type Validator = (attribute: Attribute, mustHaveMessage?: string) => Diagnostic[];
 

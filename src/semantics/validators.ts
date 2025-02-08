@@ -1,5 +1,5 @@
 import { Diagnostic } from 'vscode';
-import { Attribute } from '../annotation.parser';
+import { Attribute } from '../annotation/annotation.provider';
 import { AttributeNames } from '../enums';
 import { STD_VALUE_VALIDATION, STD_PROPERTY_VALIDATION } from './configuration';
 import { combine, validateProperties } from './helpers';
@@ -14,7 +14,8 @@ import {
 	valueShouldNotExist,
 	descriptionShouldExist,
 	valueMustBeHttpCodeString,
-	propertiesShouldNotExist
+	propertiesShouldNotExist,
+	valueMustBeHttpHeader
 } from './validator.assertions';
 import { configManager } from '../configuration/config.manager';
 import { diagnosticError } from '../diagnostics/helpers';
@@ -65,6 +66,19 @@ function validateSimpleParam(attribute: Attribute): Diagnostic[] {
 	);
 }
 
+function validateHeader(attribute: Attribute): Diagnostic[] {
+	return combine(
+		attribute,
+		{
+			value: [
+				...STD_VALUE_VALIDATION,
+				{ breakOnFailure: false, validator: valueMustBeHttpHeader },
+			],
+			properties: STD_PROPERTY_VALIDATION,
+		},
+	);
+}
+
 function validateBody(attribute: Attribute): Diagnostic[] {
 	return combine(
 		attribute,
@@ -73,7 +87,9 @@ function validateBody(attribute: Attribute): Diagnostic[] {
 				...STD_VALUE_VALIDATION,
 				{ breakOnFailure: false, validator: valueMustBeGoIdentifier },
 			],
-			properties: STD_PROPERTY_VALIDATION,
+			properties: [
+				{ breakOnFailure: false, validator: propertiesShouldNotExist },
+			]
 		},
 	);
 }

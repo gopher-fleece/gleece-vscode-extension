@@ -1,5 +1,5 @@
 import { Diagnostic, Range } from 'vscode';
-import { Attribute } from '../annotation.parser';
+import { Attribute } from '../annotation/annotation.provider';
 import { STATUS_CODES } from 'http';
 import { diagnosticError, diagnosticWarning } from '../diagnostics/helpers';
 import { DiagnosticCode } from '../diagnostics/enums';
@@ -112,6 +112,32 @@ export function valueMustBeGoIdentifier(attribute: Attribute, mustHaveMessage?: 
 export function mustBeGoIdentifier(value: string, diagnosticMessage: string, range: Range): Diagnostic[] {
 	const isIdent = /^[A-Za-z_][A-Za-z0-9_]*$/.exec(value);
 	if (!isIdent) {
+		return [
+			diagnosticWarning(
+				diagnosticMessage,
+				range,
+				DiagnosticCode.AnnotationValueInvalid
+			)
+		];
+	}
+
+	return [];
+}
+
+export function valueMustBeHttpHeader(attribute: Attribute, mustHaveMessage?: string): Diagnostic[] {
+	return mustBeHttpHeader(
+		attribute.value!,
+		mustHaveMessage ?? `${attribute.value} is not a valid HTTP header name`,
+		attribute.valueRange!
+	);
+}
+
+export function mustBeHttpHeader(value: string, diagnosticMessage: string, range: Range): Diagnostic[] {
+	// According to RFC 7230, header field names must be tokens, where a token is defined as:
+	// token = 1*tchar
+	// tchar = "!" / "#" / "$" / "%" / "&" / "'" / "*" / "+" / "-" / "." / "^" / "_" / "`" / "|" / "~" / DIGIT / ALPHA
+	const isValid = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/.exec(value);
+	if (!isValid) {
 		return [
 			diagnosticWarning(
 				diagnosticMessage,

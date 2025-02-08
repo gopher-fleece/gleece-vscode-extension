@@ -1,10 +1,16 @@
 import json5 from "json5";
-import { AttributeNames } from './enums';
+import { AttributeNames, KnownJsonProperties } from '../enums';
 import { Diagnostic, Position, Range } from 'vscode';
-import { Validators } from './semantics/validators';
-import { diagnosticError, diagnosticWarning } from './diagnostics/helpers';
-import { DiagnosticCode } from './diagnostics/enums';
-import { GolangStruct, GolangSymbol, GolangSymbolType } from './symbolic-analysis/symbolic.analyzer';
+import { Validators } from '../semantics/validators';
+import { diagnosticError, diagnosticWarning } from '../diagnostics/helpers';
+import { DiagnosticCode } from '../diagnostics/enums';
+import { GolangSymbol, GolangSymbolType } from '../symbolic-analysis/golang.common';
+import { GolangStruct } from '../symbolic-analysis/gonlang.struct';
+import { ReceiverValidator } from './validation/receiver.validator';
+import { GolangReceiver } from '../symbolic-analysis/golang.receiver';
+import { StructValidator } from './validation/struct.validator';
+import { combineRanges } from '../utils/range.utils';
+import { getAttributeRange } from './annotation.functional';
 
 interface GroupWithIndex {
 	match: string;
@@ -43,7 +49,7 @@ export interface NonAttributeComment {
 
 type AttributeCounts = { [Key in AttributeNames]: number };
 
-export class AttributesProvider {
+export class AnnotationProvider {
 	private _symbol?: GolangSymbol;
 	private _attributes: Attribute[] = [];
 	private _attributeCounts?: AttributeCounts;
@@ -59,7 +65,7 @@ export class AttributesProvider {
 		return this._range;
 	}
 
-	constructor(comments: CommentWithPosition[], associatedSymbol?: GolangSymbol) {
+	public constructor(comments: CommentWithPosition[], associatedSymbol?: GolangSymbol) {
 		if (comments.length <= 0) {
 			throw new Error("AttributeProvider called with no comments");
 		}
@@ -106,14 +112,12 @@ export class AttributesProvider {
 		return !!this.getAttribute(name);
 	}
 
-	// Public method to get the parsed attributes
-	public getAttributes(): Attribute[] {
-		return this._attributes;
-	}
-
-	// Public method to get the parsed attributes
 	public getAttribute(name: AttributeNames | string): Attribute | undefined {
 		return this._attributes.find((attr) => attr.name === name);
+	}
+
+	public getAttributes(): Attribute[] {
+		return this._attributes;
 	}
 
 	public getAttributeNames(): string[] {
@@ -125,7 +129,45 @@ export class AttributesProvider {
 		return this._nonAttributeComments;
 	}
 
-	private getAttributeCounts(): AttributeCounts {
+	public findOneByValueOrNameAlias(nameOrAlias: string): Attribute | undefined {
+		for (const attr of this._attributes) {
+			const alias = attr.properties?.[KnownJsonProperties.Name];
+			if ((alias === undefined && attr.value === nameOrAlias) || attr.properties?.[KnownJsonProperties.Name] === nameOrAlias) {
+				return attr;
+			}
+		}
+		return undefined;
+	}
+
+	public findManyByValueOrNameAlias(nameOrAliasList: string[]): { nameOrAlias: string, attribute: Attribute }[] {
+		const matches: { nameOrAlias: string, attribute: Attribute }[] = [];
+
+		for (const nameOrAlias of nameOrAliasList) {
+			for (const attribute of this._attributes) {
+				if (attribute.value === nameOrAlias || attribute.properties?.[KnownJsonProperties.Name] === nameOrAlias) {
+					matches.push({ nameOrAlias, attribute });
+					break;
+				}
+			}
+		}
+		return matches;
+	}
+
+	public findManyByValue(values: string[]): Attribute[] {
+		const matches: Attribute[] = [];
+
+		for (const nameOrAlias of values) {
+			for (const attribute of this._attributes) {
+				if (attribute.value === nameOrAlias) {
+					matches.push(attribute);
+					break;
+				}
+			}
+		}
+		return matches;
+	}
+
+	public getAttributeCounts(): AttributeCounts {
 		// We're treating the whole class as immutable in terms of what annotations it holds.
 		if (this._attributeCounts) {
 			return this._attributeCounts;
@@ -178,118 +220,35 @@ export class AttributesProvider {
 	}
 
 	private validateSelf(): Diagnostic[] {
-		const contextualIssues = this.validateAttributesAllowedInContext();
-		return contextualIssues;
-	}
+		const commonIssues = this.validateCommon();
 
-	private validateAttributesAllowedInContext(): Diagnostic[] {
-		if (!this._symbol) {
-			return [];
-		}
-
-		return this._symbol.type === GolangSymbolType.Struct
-			? this.validateControllerContext()
-			: this.validateReceiverContext();
-	}
-
-	private validateControllerContext(): Diagnostic[] {
-		const diagnostics: Diagnostic[] = [];
-		const counts = this.getAttributeCounts();
-
-		if (counts.Tag <= 0) {
-			const controller = (this._symbol as GolangStruct);
-			diagnostics.push(diagnosticWarning(
-				`Controller '${controller.symbol.name}' does not have a @Tag`,
-				this.range,
-				DiagnosticCode.ControllerLevelMissingTag
-			));
-		}
-
-		if (counts.Query > 0) {
-			diagnostics.push(this.createMayNotHaveAnnotation('Controllers', AttributeNames.Query));
-		}
-		if (counts.Path > 0) {
-			diagnostics.push(this.createMayNotHaveAnnotation('Controllers', AttributeNames.Path));
-		}
-		if (counts.Body > 0) {
-			diagnostics.push(this.createMayNotHaveAnnotation('Controllers', AttributeNames.Body));
-		}
-		if (counts.Method > 0) {
-			diagnostics.push(this.createMayNotHaveAnnotation('Controllers', AttributeNames.Method));
-		}
-
-		return diagnostics;
-	}
-
-	private validateReceiverContext(): Diagnostic[] {
-		const diagnostics: Diagnostic[] = [];
-		const counts = this.getAttributeCounts();
-		if (counts.Tag > 0) {
-			diagnostics.push(diagnosticWarning(
-				'Receivers may not have a @Tag annotation',
-				this.range,
-				DiagnosticCode.MethodLevelAnnotationNotAllowed
-			));
-		}
-
-		if (counts.Body > 1) {
-			diagnostics.push(this.createTooManyOfXError(AttributeNames.Body));
-		}
-
-		switch (counts.Method) {
-			case 0:
-				diagnostics.push(this.createMissingRequiredAnnotationError(AttributeNames.Method));
+		let specificIssues: Diagnostic[] = [];
+		switch (this._symbol?.type) {
+			case GolangSymbolType.Struct:
+				specificIssues = this.validateStruct();
 				break;
-			case 1:
+			case GolangSymbolType.Receiver:
+				specificIssues = this.validateReceiver();
 				break;
 			default:
-				diagnostics.push(this.createTooManyOfXError(AttributeNames.Method));
 				break;
 		}
 
-		switch (counts.Route) {
-			case 0:
-				diagnostics.push(this.createMissingRequiredAnnotationError(AttributeNames.Route));
-				break;
-			case 1:
-				break;
-			default:
-				diagnostics.push(this.createTooManyOfXError(AttributeNames.Route));
-				break;
-		}
-
-		return diagnostics;
+		return commonIssues.concat(specificIssues);
 	}
 
-	private validateReferences(): Diagnostic[] {
-		const errors: Diagnostic[] = [];
-		return errors;
+	private validateCommon(): Diagnostic[] {
+		return [];
 	}
 
-	private createTooManyOfXError(attributeName: AttributeNames): Diagnostic {
-		return diagnosticError(
-			`A controller method may have a maximum of one @${attributeName} annotation`,
-			this.range,
-			DiagnosticCode.MethodLevelTooManyOfAnnotation
-		)
+	private validateStruct(): Diagnostic[] {
+		const validator = new StructValidator(this._symbol as GolangStruct, this);
+		return validator.validate();
 	}
 
-	private createMayNotHaveAnnotation(entity: 'Controllers' | 'Receivers', attributeName: AttributeNames): Diagnostic {
-		return diagnosticError(
-			`${entity} may not have a @${attributeName} annotation`,
-			this.range,
-			entity === 'Controllers'
-				? DiagnosticCode.ControllerLevelAnnotationNotAllowed
-				: DiagnosticCode.MethodLevelAnnotationNotAllowed
-		)
-	}
-
-	private createMissingRequiredAnnotationError(attributeName: AttributeNames): Diagnostic {
-		return diagnosticError(
-			`A controller method must have a @${attributeName} annotation`,
-			this.range,
-			DiagnosticCode.MethodLevelMissingRequiredAnnotation
-		)
+	private validateReceiver(): Diagnostic[] {
+		const validator = new ReceiverValidator(this._symbol as GolangReceiver, this);
+		return validator.validate();
 	}
 
 	// Private method for parsing comments
