@@ -51,7 +51,7 @@ export async function activate(context: ExtensionContext) {
 
 		commands.registerCommand('gleece.reAnalyzeFile', () => {
 			if (window.activeTextEditor) {
-				diagnosticsListener.fullDiagnostics(window.activeTextEditor.document)
+				diagnosticsListener.fullDiagnostics(window.activeTextEditor.document);
 			} else {
 				window.showWarningMessage('Cannot re-analyze - no file is open');
 			}

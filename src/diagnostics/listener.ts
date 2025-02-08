@@ -176,7 +176,7 @@ export class GleeceDiagnosticsListener {
 		}
 
 		if (scanStart !== Number.MAX_SAFE_INTEGER && scanEnd !== Number.MIN_SAFE_INTEGER) {
-			const updatedProviders = getProvidersForRange(event.document, scanStart, scanEnd)
+			const updatedProviders = getProvidersForRange(event.document, scanStart, scanEnd);
 			this._tree.insertMany(updatedProviders);
 		}
 	}

@@ -40,7 +40,7 @@ export class GolangSymbolicAnalyzer {
 		);
 
 		if (!symbols) {
-			return new Error(`Could not retrieve symbols for document '${this._document.uri}'`)
+			return new Error(`Could not retrieve symbols for document '${this._document.uri}'`);
 		}
 
 		this._tree.clear();

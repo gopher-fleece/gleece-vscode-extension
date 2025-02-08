@@ -19,7 +19,7 @@ export abstract class BaseValidator<TType extends GolangSymbol> {
 			`A controller method may have a maximum of one @${attributeName} annotation`,
 			range,
 			DiagnosticCode.MethodLevelTooManyOfAnnotation
-		)
+		);
 	}
 
 	protected createMayNotHaveAnnotation(
@@ -33,7 +33,7 @@ export abstract class BaseValidator<TType extends GolangSymbol> {
 			entity === 'Controllers'
 				? DiagnosticCode.ControllerLevelAnnotationNotAllowed
 				: DiagnosticCode.MethodLevelAnnotationNotAllowed
-		)
+		);
 	}
 
 	protected createMissingRequiredAnnotationError(attributeName: AttributeNames, range: Range): Diagnostic {
@@ -41,6 +41,6 @@ export abstract class BaseValidator<TType extends GolangSymbol> {
 			`A controller method must have a @${attributeName} annotation`,
 			range,
 			DiagnosticCode.MethodLevelMissingRequiredAnnotation
-		)
+		);
 	}
 }

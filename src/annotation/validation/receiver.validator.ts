@@ -36,7 +36,7 @@ export class ReceiverValidator extends BaseValidator<GolangReceiver> {
 						param.range,
 						DiagnosticCode.MethodLevelMissingParamAnnotation
 					)
-				)
+				);
 			}
 		}
 
