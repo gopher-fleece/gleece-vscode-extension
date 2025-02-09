@@ -7,16 +7,18 @@ import {
 	window,
 	workspace
 } from 'vscode';
-import { GleeceProvider } from './gleece.completion.provider';
+import { SimpleCompletionProvider } from './completion/gleece.simple.completion.provider';
 import { GoLangId } from './common.constants';
 import { ResourceManager } from './resource.manager';
 import { GleeceCodeActionProvider } from './code-actions/code.action.provider';
 import { GleeceDiagnosticsListener } from './diagnostics/listener';
+import { SemanticHoverProvider } from './hover/semantic.hover.provider';
 
 export let resourceManager: ResourceManager;
 
-let completionAndHoverProvider: GleeceProvider;
+let completionAndHoverProvider: SimpleCompletionProvider;
 let gleeceCodeActionsProvider: GleeceCodeActionProvider;
+let semanticHoverProvider: SemanticHoverProvider;
 let diagnosticsListener: GleeceDiagnosticsListener;
 
 export async function activate(context: ExtensionContext) {
@@ -26,7 +28,8 @@ export async function activate(context: ExtensionContext) {
 	const { configManager } = (await import('./configuration/config.manager'));
 	await configManager.init();
 
-	completionAndHoverProvider = new GleeceProvider();
+	completionAndHoverProvider = new SimpleCompletionProvider();
+	semanticHoverProvider = new SemanticHoverProvider();
 	gleeceCodeActionsProvider = new GleeceCodeActionProvider();
 	diagnosticsListener = new GleeceDiagnosticsListener();
 
@@ -38,7 +41,7 @@ export async function activate(context: ExtensionContext) {
 		),
 		languages.registerHoverProvider(
 			{ scheme: 'file', language: GoLangId },
-			completionAndHoverProvider
+			semanticHoverProvider,
 		),
 		languages.registerCodeActionsProvider(
 			{ scheme: 'file', language: GoLangId },
@@ -67,7 +70,7 @@ export async function activate(context: ExtensionContext) {
 				diagnosticsListener.fullDiagnostics(window.activeTextEditor.document);
 			}
 		},
-		300
+		500
 	);
 }
 

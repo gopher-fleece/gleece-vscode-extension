@@ -11,10 +11,10 @@ import {
 	TextDocument,
 	HoverProvider,
 } from 'vscode';
-import { AttributeDescriptions, AttributeNames, AttributeNamesCompletionObjects, RepeatableAttributes } from './enums';
-import { getAnnotationProvider } from './annotation/annotation.functional';
+import { AttributeDescriptions, AttributeNames, AttributeNamesCompletionObjects, RepeatableAttributes } from '../enums';
+import { getAnnotationProvider } from '../annotation/annotation.functional';
 
-export class GleeceProvider implements CompletionItemProvider, HoverProvider {
+export class SimpleCompletionProvider implements CompletionItemProvider, HoverProvider {
 
 	// Provide completion items dynamically based on the active document's annotations
 	public provideCompletionItems(

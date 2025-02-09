@@ -1,6 +1,6 @@
-import { TextDocument, commands, DocumentSymbol, SymbolKind, Range, Uri } from 'vscode';
+import { TextDocument, commands, DocumentSymbol, SymbolKind, Range, Uri, Position } from 'vscode';
 import { GenericIntervalTree } from '../diagnostics/interval.tree';
-import { GolangSymbol } from './golang.common';
+import { GolangSymbol, GolangSymbolType } from './golang.common';
 import { GolangReceiver } from './golang.receiver';
 import { GolangStruct } from './gonlang.struct';
 export class GolangSymbolicAnalyzer {
@@ -30,6 +30,24 @@ export class GolangSymbolicAnalyzer {
 
 	public findOneImmediatelyAfter(range: Range): GolangSymbol | undefined {
 		return this._tree.findOneImmediatelyAfter(range);
+	}
+
+	public intersections(range: Range): GolangSymbol[] {
+		return this._tree.searchAll(range);
+	}
+
+	/**
+	 * Returns the symbol (if any) at the given position
+	 * Note: If multiple symbols are found, only the first is returned
+	 *
+	 * @param {Position} pos
+	 * @return {(GolangSymbol | undefined)}
+	 * @memberof GolangSymbolicAnalyzer
+	 */
+	public getSymbolAtPosition(pos: Position): GolangSymbol | undefined {
+		// Suboptimal. We're assuming realistic conditions here though so not a huge deal probably.
+		const allMatches = this._tree.searchAll(new Range(pos, pos));
+		return allMatches?.[0];
 	}
 
 	public async analyze(): Promise<Error | undefined> {

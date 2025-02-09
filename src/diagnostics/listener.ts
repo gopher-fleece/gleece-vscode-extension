@@ -12,10 +12,9 @@ import { resourceManager } from '../extension';
 import { GenericIntervalTree } from './interval.tree';
 import { configManager } from '../configuration/config.manager';
 import { AnalysisMode } from '../configuration/extension.config';
-import { GolangSymbolicAnalyzer } from '../symbolic-analysis/symbolic.analyzer';
+import { semanticProvider } from '../semantics/semantics.provider';
 
 export class GleeceDiagnosticsListener {
-	private _symbolicAnalyzers: GolangSymbolicAnalyzer[] = [];
 
 	private _diagnosticCollection: DiagnosticCollection;
 	private _tree: GenericIntervalTree<AnnotationProvider>;
@@ -67,7 +66,7 @@ export class GleeceDiagnosticsListener {
 
 		// Currently always refreshing the analyzer- keeping track of changes to this degree would be quite complex.
 		// Not ideal but good enough for now.
-		const analyzer = await this.getAnalyzerForDocument(document, true);
+		const analyzer = await semanticProvider.getAnalyzerForDocument(document, true);
 
 		const providers = getProvidersForSymbols(document, analyzer.symbols);
 		for (const provider of providers) {
@@ -78,24 +77,6 @@ export class GleeceDiagnosticsListener {
 		}
 
 		return diagnostics;
-	}
-
-	private async getAnalyzerForDocument(document: TextDocument, fresh: boolean): Promise<GolangSymbolicAnalyzer> {
-		const maxAnalyzersInCache = 5;
-
-		const idx = this._symbolicAnalyzers.findIndex((analyzer) => analyzer.documentUri === document.uri);
-		if (!idx || fresh) {
-			const analyzer = new GolangSymbolicAnalyzer(document);
-			await analyzer.analyze();
-
-			if (this._symbolicAnalyzers.length > maxAnalyzersInCache) {
-				this._symbolicAnalyzers.splice(0, 1);
-			}
-			this._symbolicAnalyzers.push(analyzer);
-			return analyzer;
-		}
-
-		return this._symbolicAnalyzers[idx];
 	}
 
 	public async differentialDiagnostics(event: TextDocumentChangeEvent): Promise<void> {
