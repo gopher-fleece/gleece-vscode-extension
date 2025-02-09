@@ -87,9 +87,7 @@ function validateBody(attribute: Attribute): Diagnostic[] {
 				...STD_VALUE_VALIDATION,
 				{ breakOnFailure: false, validator: valueMustBeGoIdentifier },
 			],
-			properties: [
-				{ breakOnFailure: false, validator: propertiesShouldNotExist },
-			]
+			properties: STD_PROPERTY_VALIDATION,
 		},
 	);
 }
