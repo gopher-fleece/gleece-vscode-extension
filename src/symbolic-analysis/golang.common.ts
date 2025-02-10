@@ -2,7 +2,7 @@ import { Range, DocumentSymbol } from 'vscode';
 
 export enum GolangSymbolType {
 	Struct,
-	Receiver,
+	Receiver
 }
 
 export abstract class GolangSymbol {

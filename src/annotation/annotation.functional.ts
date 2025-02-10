@@ -17,14 +17,14 @@ function getSurroundingComments(document: TextDocument, position: Position): Com
 	while (currentLine >= 0) {
 		const lineObject = document.lineAt(currentLine);
 		const trimmedStartText = lineObject.text.trimStart();
-		if (!trimmedStartText.startsWith("//")) {
+		if (!trimmedStartText.startsWith('//')) {
 			break; // Stop if we hit a non-comment line
 		}
 
 		comments.unshift({
 			text: trimmedStartText.trim(),
 			range: lineObject.range,
-			startIndex: lineObject.text.length - trimmedStartText.length,
+			startIndex: lineObject.text.length - trimmedStartText.length
 		});
 		currentLine--;
 	}
@@ -34,13 +34,13 @@ function getSurroundingComments(document: TextDocument, position: Position): Com
 	while (currentLine < totalLines) {
 		const lineObject = document.lineAt(currentLine);
 		const trimmedStartText = lineObject.text.trimStart();
-		if (!trimmedStartText.startsWith("//")) {
+		if (!trimmedStartText.startsWith('//')) {
 			break; // Stop if we hit a non-comment line
 		}
 		comments.push({
 			text: trimmedStartText.trim(),
 			range: lineObject.range,
-			startIndex: lineObject.text.length - trimmedStartText.length,
+			startIndex: lineObject.text.length - trimmedStartText.length
 		});
 		currentLine++;
 	}
@@ -81,7 +81,7 @@ export function getProviderForSymbol(document: TextDocument, symbol: GolangSymbo
 		comments.unshift({
 			text: trimmed,
 			range: line.range,
-			startIndex: line.firstNonWhitespaceCharacterIndex,
+			startIndex: line.firstNonWhitespaceCharacterIndex
 		});
 
 		currentLine--;
@@ -105,12 +105,12 @@ export function getProvidersForRange(document: TextDocument, startLine?: number,
 		const line = document.lineAt(i);
 		const trimmedText = line.text.trimStart();
 
-		if (trimmedText.startsWith("//")) {
+		if (trimmedText.startsWith('//')) {
 			// Collect comment line
 			comments.push({
 				text: trimmedText,
 				range: line.range,
-				startIndex: line.text.length - trimmedText.length, // Leading whitespace offset
+				startIndex: line.text.length - trimmedText.length // Leading whitespace offset
 			});
 		} else if (comments.length > 0) {
 			// If we hit a non-comment and had collected comments, create a provider

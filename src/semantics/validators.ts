@@ -14,12 +14,11 @@ import {
 	valueShouldNotExist,
 	descriptionShouldExist,
 	valueMustBeHttpCodeString,
-	propertiesShouldNotExist,
-	valueMustBeHttpHeader
+	propertiesShouldNotExist
 } from './validator.assertions';
-import { configManager } from '../configuration/config.manager';
 import { diagnosticError } from '../diagnostics/helpers';
 import { DiagnosticCode } from '../diagnostics/enums';
+import { gleeceContext } from '../context/context';
 
 
 function validateMethod(attribute: Attribute): Diagnostic[] {
@@ -28,13 +27,13 @@ function validateMethod(attribute: Attribute): Diagnostic[] {
 		{
 			value: [
 				...STD_VALUE_VALIDATION,
-				{ breakOnFailure: false, validator: valueMustBeHttpCodeString },
+				{ breakOnFailure: false, validator: valueMustBeHttpCodeString }
 			],
 			properties: [
 				{ breakOnFailure: false, validator: propertiesShouldNotExist },
 				...STD_PROPERTY_VALIDATION
-			],
-		},
+			]
+		}
 	);
 }
 
@@ -44,12 +43,12 @@ function validateRoute(attribute: Attribute): Diagnostic[] {
 		{
 			value: [
 				...STD_VALUE_VALIDATION,
-				{ breakOnFailure: false, validator: valueMustBeValidRoute },
+				{ breakOnFailure: false, validator: valueMustBeValidRoute }
 			],
 			properties: [
-				{ breakOnFailure: false, validator: propertiesShouldNotExist },
-			],
-		},
+				{ breakOnFailure: false, validator: propertiesShouldNotExist }
+			]
+		}
 	);
 }
 
@@ -59,23 +58,10 @@ function validateSimpleParam(attribute: Attribute): Diagnostic[] {
 		{
 			value: [
 				...STD_VALUE_VALIDATION,
-				{ breakOnFailure: false, validator: valueMustBeGoIdentifier },
+				{ breakOnFailure: false, validator: valueMustBeGoIdentifier }
 			],
-			properties: STD_PROPERTY_VALIDATION,
-		},
-	);
-}
-
-function validateHeader(attribute: Attribute): Diagnostic[] {
-	return combine(
-		attribute,
-		{
-			value: [
-				...STD_VALUE_VALIDATION,
-				{ breakOnFailure: false, validator: valueMustBeHttpHeader },
-			],
-			properties: STD_PROPERTY_VALIDATION,
-		},
+			properties: STD_PROPERTY_VALIDATION
+		}
 	);
 }
 
@@ -85,12 +71,12 @@ function validateBody(attribute: Attribute): Diagnostic[] {
 		{
 			value: [
 				...STD_VALUE_VALIDATION,
-				{ breakOnFailure: false, validator: valueMustBeGoIdentifier },
+				{ breakOnFailure: false, validator: valueMustBeGoIdentifier }
 			],
 			properties: [
-				{ breakOnFailure: false, validator: propertiesShouldNotExist },
+				{ breakOnFailure: false, validator: propertiesShouldNotExist }
 			]
-		},
+		}
 	);
 }
 
@@ -99,7 +85,7 @@ function validateTag(attribute: Attribute): Diagnostic[] {
 		attribute,
 		{
 			value: STD_VALUE_VALIDATION,
-			properties: STD_PROPERTY_VALIDATION,
+			properties: STD_PROPERTY_VALIDATION
 		}
 	);
 }
@@ -117,20 +103,20 @@ function validateSecurity(attribute: Attribute): Diagnostic[] {
 				{
 					breakOnFailure: false,
 					validator: (attribute: Attribute) => {
-						const validSchemaName = configManager.securitySchemaNames.includes(attribute.value!);
+						const validSchemaName = gleeceContext.configManager.securitySchemaNames.includes(attribute.value!);
 						if (!validSchemaName) {
 							return [diagnosticError(
 								`Schema '${attribute.value}' is not specified in ` +
-								`${configManager.getExtensionConfigValue('config.path')}.\n` +
-								`Known schemas are: ${configManager.securitySchemaNames.join(', ')}`,
+								`${gleeceContext.configManager.getExtensionConfigValue('config.path')}.\n` +
+								`Known schemas are: ${gleeceContext.configManager.securitySchemaNames.join(', ')}`,
 								attribute.valueRange!,
 								DiagnosticCode.AnnotationPropertiesInvalidValueForKey
 							)];
 						}
 						return [];
 					}
-				},
-			],
+				}
+			]
 		}
 	);
 }
@@ -153,13 +139,13 @@ function validateResponse(attribute: Attribute): Diagnostic[] {
 					validator: (attribute: Attribute) => valueMustBeHttpStatusCode(
 						attribute,
 						`${attribute.value} is not a standard HTTP status code`
-					),
-				},
+					)
+				}
 			],
 			properties: [
-				{ breakOnFailure: false, validator: propertiesShouldNotExist },
-			],
-		},
+				{ breakOnFailure: false, validator: propertiesShouldNotExist }
+			]
+		}
 	);
 }
 
@@ -176,14 +162,14 @@ function validateSimpleAnnotation(attribute: Attribute): Diagnostic[] {
 			value: [
 				{
 					breakOnFailure: false,
-					validator: valueShouldNotExist,
-				},
+					validator: valueShouldNotExist
+				}
 			],
 			properties: STD_PROPERTY_VALIDATION,
 			description: [
-				{ breakOnFailure: true, validator: descriptionShouldExist },
-			],
-		},
+				{ breakOnFailure: true, validator: descriptionShouldExist }
+			]
+		}
 	);
 }
 
@@ -194,13 +180,13 @@ function validateHidden(attribute: Attribute): Diagnostic[] {
 			value: [
 				{
 					breakOnFailure: false,
-					validator: valueShouldNotExist,
-				},
+					validator: valueShouldNotExist
+				}
 			],
 			properties: [
-				{ breakOnFailure: false, validator: propertiesShouldNotExist },
-			],
-		},
+				{ breakOnFailure: false, validator: propertiesShouldNotExist }
+			]
+		}
 	);
 }
 
@@ -218,5 +204,5 @@ export const Validators: { [Key in AttributeNames]: (attribute: Attribute) => Di
 	[AttributeNames.Tag]: validateTag,
 	[AttributeNames.Description]: validateSimpleAnnotation,
 	[AttributeNames.Hidden]: validateHidden,
-	[AttributeNames.Deprecated]: validateSimpleAnnotation,
+	[AttributeNames.Deprecated]: validateSimpleAnnotation
 };

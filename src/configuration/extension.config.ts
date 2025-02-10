@@ -1,6 +1,6 @@
 export enum AnalysisMode {
 	Full = 'full',
-	Differential = 'differential',
+	Differential = 'differential'
 }
 
 export const ExtensionRootNamespace = 'gleece';

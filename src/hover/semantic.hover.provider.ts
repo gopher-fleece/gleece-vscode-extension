@@ -8,7 +8,7 @@ import {
 	ProviderResult,
 	TextDocument,
 	HoverProvider,
-	MarkdownString,
+	MarkdownString
 } from 'vscode';
 import { AttributeNames, AttributeNamesCompletionObjects, RepeatableAttributes } from '../enums';
 import { getAnnotationProvider, getProvidersForSymbols } from '../annotation/annotation.functional';
@@ -17,7 +17,7 @@ import { GolangSymbolicAnalyzer } from '../symbolic-analysis/symbolic.analyzer';
 import { GolangStruct } from '../symbolic-analysis/gonlang.struct';
 import { GolangSymbolType } from '../symbolic-analysis/golang.common';
 import { GolangReceiver } from '../symbolic-analysis/golang.receiver';
-import dedent from 'dedent';
+import { createMarkdownTable } from './markdown.factory';
 
 export class SemanticHoverProvider implements HoverProvider {
 
@@ -25,8 +25,8 @@ export class SemanticHoverProvider implements HoverProvider {
 	public provideCompletionItems(
 		document: TextDocument,
 		position: Position,
-		token: CancellationToken,
-		context: CompletionContext
+		_token: CancellationToken,
+		_context: CompletionContext
 	): ProviderResult<CompletionItem[]> {
 		const line = document.lineAt(position);
 		const text = line.text.trim();
@@ -52,7 +52,7 @@ export class SemanticHoverProvider implements HoverProvider {
 	public provideHover(
 		document: TextDocument,
 		position: Position,
-		token: CancellationToken
+		_token: CancellationToken
 	): ProviderResult<Hover> {
 		const line = document.lineAt(position);
 		const text = line.text.trim();
@@ -82,24 +82,23 @@ export class SemanticHoverProvider implements HoverProvider {
 
 		switch (symbol?.type) {
 			case GolangSymbolType.Struct:
-				const struct = symbol as GolangStruct;
-				if (struct.isController) {
-					return this.onControllerHover(document, analyzer, struct);
+				if ((symbol as GolangStruct).isController) {
+					return this.onControllerHover(document, analyzer, symbol as GolangStruct);
 				}
 				return undefined;
 			case GolangSymbolType.Receiver:
 				break;
 			default:
-				break
+				break;
 		}
 		return undefined;
 	}
 
-	private async onControllerHover(
+	private onControllerHover(
 		document: TextDocument,
 		analyzer: GolangSymbolicAnalyzer,
 		struct: GolangStruct
-	): Promise<Hover | undefined> {
+	): Hover | undefined {
 		const receivers = analyzer.symbols.filter((symbol) =>
 			symbol.type === GolangSymbolType.Receiver
 			&& (symbol as GolangReceiver).ownerStructName === struct.symbol.name
@@ -107,30 +106,28 @@ export class SemanticHoverProvider implements HoverProvider {
 
 
 		const receiverHolders = getProvidersForSymbols(document, receivers);
-		const markdown = new MarkdownString('<div>', true); // Open a main div
-		markdown.isTrusted = true;
-		markdown.supportHtml = true;
 
-		markdown.appendMarkdown(dedent(`
-			<span style='color:var(--vscode-symbolIcon-classForeground);'>
-				${struct.symbol.name}
-			</span>
-		`));
-
-		for (let i = 0; i < receiverHolders.length; i++) {
-			const annotations = receiverHolders[i];
-			const verb = annotations.getAttribute(AttributeNames.Method)?.value ?? 'UNKNOWN';
-			const route = annotations.getAttribute(AttributeNames.Route)?.value ?? 'UNKNOWN';
-			markdown.appendMarkdown(dedent(`
-				<div>
-					<span style='color:var(--vscode-symbolIcon-methodForeground);'>${receivers[i].name}</span>
-					<span style='color:var(--vscode-symbolIcon-structForeground);'>${verb}</span>
-					<span style='color:var(--vscode-symbolIcon-stringForeground);'>${route}</span>
-				</div>
-			`));
-		}
-
-		markdown.appendMarkdown('</div>'); // Close the main div
-		return new Hover(markdown);
+		return new Hover(
+			createMarkdownTable(
+				[
+					{
+						label: 'API',
+						maxWidth: 45,
+						values: receivers.map((r) => r.name)
+					},
+					{
+						label: 'Method',
+						maxWidth: 10,
+						values: receiverHolders.map((r) => (r.getAttribute(AttributeNames.Method)?.value ?? ''))
+					},
+					{
+						label: 'Route',
+						maxWidth: 45,
+						values: receiverHolders.map((r) => (`\`${r.getAttribute(AttributeNames.Route)?.value ?? ''}\``))
+					}
+				],
+				new MarkdownString(`**${struct.symbol.name}**\n\n`)
+			)
+		);
 	}
 }

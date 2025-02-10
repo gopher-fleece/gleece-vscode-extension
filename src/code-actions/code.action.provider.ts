@@ -15,7 +15,7 @@ export class GleeceCodeActionProvider implements CodeActionProvider {
 	private readonly _valueShouldNotExistRegex = /@\w+(\(.+\))/;
 	private readonly _propsShouldNotExistRegex = /@\w+\(.+(\s*,\s*.+)\)/;
 
-	public provideCodeActions(document: TextDocument, range: Range, context: CodeActionContext): CodeAction[] | undefined {
+	public provideCodeActions(document: TextDocument, _range: Range, context: CodeActionContext): CodeAction[] | undefined {
 		const fixes: (CodeAction | undefined)[] = [];
 
 		// Iterate over diagnostics in the range

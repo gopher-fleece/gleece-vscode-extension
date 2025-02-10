@@ -7,58 +7,41 @@ import {
 	window,
 	workspace
 } from 'vscode';
-import { SimpleCompletionProvider } from './completion/gleece.simple.completion.provider';
 import { GoLangId } from './common.constants';
-import { ResourceManager } from './resource.manager';
-import { GleeceCodeActionProvider } from './code-actions/code.action.provider';
-import { GleeceDiagnosticsListener } from './diagnostics/listener';
-import { SemanticHoverProvider } from './hover/semantic.hover.provider';
-
-export let resourceManager: ResourceManager;
-
-let completionAndHoverProvider: SimpleCompletionProvider;
-let gleeceCodeActionsProvider: GleeceCodeActionProvider;
-let semanticHoverProvider: SemanticHoverProvider;
-let diagnosticsListener: GleeceDiagnosticsListener;
+import { gleeceContext } from './context/context';
+import { logger } from './logging/logger';
 
 export async function activate(context: ExtensionContext) {
-	resourceManager = new ResourceManager(context);
-
-	// Using dynamic imports so we can ensure the resource manager has its context first
-	const { configManager } = (await import('./configuration/config.manager'));
-	await configManager.init();
-
-	completionAndHoverProvider = new SimpleCompletionProvider();
-	semanticHoverProvider = new SemanticHoverProvider();
-	gleeceCodeActionsProvider = new GleeceCodeActionProvider();
-	diagnosticsListener = new GleeceDiagnosticsListener();
-
+	// DO NOT CALL LOGGER ABOVE THIS POINT.
+	await gleeceContext.init(context);
+	logger.debug('Gleece Extension activating...');
 	context.subscriptions.push(
 		languages.registerCompletionItemProvider(
 			GoLangId,
-			completionAndHoverProvider,
+			gleeceContext.completionAndHoverProvider,
 			'@'
 		),
 		languages.registerHoverProvider(
 			{ scheme: 'file', language: GoLangId },
-			semanticHoverProvider,
+			gleeceContext.hoverProvider
 		),
 		languages.registerCodeActionsProvider(
 			{ scheme: 'file', language: GoLangId },
-			gleeceCodeActionsProvider,
+			gleeceContext.codeActionsProvider,
 			{ providedCodeActionKinds: [CodeActionKind.QuickFix, CodeActionKind.SourceFixAll] }
 		),
-		workspace.onDidOpenTextDocument((document) => diagnosticsListener.fullDiagnostics(document)),
-		workspace.onDidChangeTextDocument((event) => diagnosticsListener.differentialDiagnostics(event)),
-		workspace.onDidCloseTextDocument((document) => diagnosticsListener.textDocumentClosed(document)),
+		workspace.onDidOpenTextDocument((document) => gleeceContext.diagnosticsListener.fullDiagnostics(document)),
+		workspace.onDidChangeTextDocument((event) => gleeceContext.diagnosticsListener.differentialDiagnostics(event)),
+		workspace.onDidCloseTextDocument((document) => gleeceContext.diagnosticsListener.textDocumentClosed(document)),
 
 		commands.registerCommand('gleece.reAnalyzeFile', () => {
 			if (window.activeTextEditor) {
-				diagnosticsListener.fullDiagnostics(window.activeTextEditor.document);
+				gleeceContext.diagnosticsListener.fullDiagnostics(window.activeTextEditor.document)
+					.catch((err) => logger.error('Could not re-analyze file', err));
 			} else {
 				window.showWarningMessage('Cannot re-analyze - no file is open');
 			}
-		}),
+		})
 	);
 
 	// It would appear there might be a delay between when VS Code calls activate and the time
@@ -67,13 +50,17 @@ export async function activate(context: ExtensionContext) {
 	setTimeout(
 		() => {
 			if (window.activeTextEditor) {
-				diagnosticsListener.fullDiagnostics(window.activeTextEditor.document);
+				gleeceContext.diagnosticsListener.fullDiagnostics(window.activeTextEditor.document)
+					.catch((err) => logger.error('Could not analyze file', err));
 			}
 		},
 		500
 	);
+	logger.debug('Gleece Extension activated');
 }
 
 export function deactivate() {
-	diagnosticsListener?.deactivate();
+	logger.debug('Gleece Extension deactivating...');
+	gleeceContext.deactivate();
+	logger.debug('Gleece Extension deactivated');
 }

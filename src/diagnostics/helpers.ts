@@ -6,7 +6,7 @@ function createDiagnostic(
 	message: string,
 	severity: DiagnosticSeverity,
 	range: Range,
-	code?: number | string,
+	code?: number | string
 ): Diagnostic {
 	const diagnostic = new Diagnostic(range, message, severity);
 	diagnostic.source = Gleece;

@@ -1,4 +1,4 @@
-import { Diagnostic, DiagnosticSeverity, Range } from 'vscode';
+import { Diagnostic } from 'vscode';
 import { Attribute } from '../annotation/annotation.provider';
 import { AttributeNames } from '../enums';
 import { KNOWN_PROPERTIES } from './configuration';

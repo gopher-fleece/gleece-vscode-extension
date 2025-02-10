@@ -1,12 +1,12 @@
 // KnownTemplate enum
 export enum KnownTemplate {
-	ROUTES = "routes",
-	CONTROLLER_RESPONSE_PARTIAL = "controller.response.partial",
+	ROUTES = 'routes',
+	CONTROLLER_RESPONSE_PARTIAL = 'controller.response.partial'
 }
 
 // RoutingEngineType enum
 export enum RoutingEngineType {
-	GIN = "gin",
+	GIN = 'gin'
 }
 
 // SecuritySchemeType enum

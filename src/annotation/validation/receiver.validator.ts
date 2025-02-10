@@ -8,6 +8,9 @@ import { Attribute } from '../annotation.provider';
 import { combineRanges } from '../../utils/range.utils';
 import { getAttributeRange } from '../annotation.functional';
 
+// We don't care about enum opaqueness here, we just want the pattern matching.
+/* eslint-disable @typescript-eslint/no-unsafe-enum-comparison */
+
 export class ReceiverValidator extends BaseValidator<GolangReceiver> {
 
 	public validate(): Diagnostic[] {
@@ -85,12 +88,13 @@ export class ReceiverValidator extends BaseValidator<GolangReceiver> {
 	private validateSchemaDeclarations(): Diagnostic[] {
 		const attrValueToCount = new Map<string, Attribute[]>();
 
+		let alias: string;
 		for (const attribute of this._annotations.getAttributes()) {
 			switch (attribute.name) {
 				case AttributeNames.Query:
 				case AttributeNames.Path:
 				case AttributeNames.Header:
-					const alias = attribute.properties?.[KnownJsonProperties.Name];
+					alias = attribute.properties?.[KnownJsonProperties.Name];
 					if (!alias) {
 						continue;
 					}

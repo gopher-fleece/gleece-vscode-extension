@@ -9,7 +9,7 @@ import {
 	Position,
 	ProviderResult,
 	TextDocument,
-	HoverProvider,
+	HoverProvider
 } from 'vscode';
 import { AttributeDescriptions, AttributeNames, AttributeNamesCompletionObjects, RepeatableAttributes } from '../enums';
 import { getAnnotationProvider } from '../annotation/annotation.functional';
@@ -20,8 +20,8 @@ export class SimpleCompletionProvider implements CompletionItemProvider, HoverPr
 	public provideCompletionItems(
 		document: TextDocument,
 		position: Position,
-		token: CancellationToken,
-		context: CompletionContext
+		_token: CancellationToken,
+		_context: CompletionContext
 	): ProviderResult<CompletionItem[]> {
 		const line = document.lineAt(position);
 		const text = line.text.trim();
@@ -46,7 +46,7 @@ export class SimpleCompletionProvider implements CompletionItemProvider, HoverPr
 	public provideHover(
 		document: TextDocument,
 		position: Position,
-		token: CancellationToken
+		_token: CancellationToken
 	): ProviderResult<Hover> {
 		const line = document.lineAt(position);
 		const text = line.text.trim();

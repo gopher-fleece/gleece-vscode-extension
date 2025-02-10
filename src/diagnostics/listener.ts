@@ -3,16 +3,15 @@ import {
 	DiagnosticCollection,
 	languages,
 	TextDocument,
-	TextDocumentChangeEvent,
+	TextDocumentChangeEvent
 } from 'vscode';
 import { getProvidersForRange, getProvidersForSymbols } from '../annotation/annotation.functional';
 import { GoLangId } from '../common.constants';
 import { AnnotationProvider } from '../annotation/annotation.provider';
-import { resourceManager } from '../extension';
 import { GenericIntervalTree } from './interval.tree';
-import { configManager } from '../configuration/config.manager';
 import { AnalysisMode } from '../configuration/extension.config';
 import { semanticProvider } from '../semantics/semantics.provider';
+import { gleeceContext } from '../context/context';
 
 export class GleeceDiagnosticsListener {
 
@@ -21,7 +20,7 @@ export class GleeceDiagnosticsListener {
 
 	public constructor() {
 		this._diagnosticCollection = languages.createDiagnosticCollection('gleece');
-		resourceManager.registerDisposable(this._diagnosticCollection);
+		gleeceContext.registerDisposable(this._diagnosticCollection);
 		this._tree = new GenericIntervalTree();
 	}
 
@@ -31,10 +30,10 @@ export class GleeceDiagnosticsListener {
 		}
 
 		let diagnostics: Diagnostic[];
-		if (configManager.getExtensionConfigValue('analysis.enableSymbolicAwareness')) {
+		if (gleeceContext.configManager.getExtensionConfigValue('analysis.enableSymbolicAwareness')) {
 			diagnostics = await this.fullDiagnosticsWithSymbolicAnalysis(document);
 		} else {
-			diagnostics = await this.fullDiagnosticsSlim(document);
+			diagnostics = this.fullDiagnosticsSlim(document);
 		}
 
 		this._tree.clear();
@@ -43,7 +42,7 @@ export class GleeceDiagnosticsListener {
 		this._diagnosticCollection.set(document.uri, diagnostics);
 	}
 
-	public async fullDiagnosticsSlim(document: TextDocument): Promise<Diagnostic[]> {
+	public fullDiagnosticsSlim(document: TextDocument): Diagnostic[] {
 		if (document.languageId !== GoLangId) {
 			return [];
 		}
@@ -90,7 +89,7 @@ export class GleeceDiagnosticsListener {
 
 		// This could be re-written as a private state mutated by an event.
 		// A bit overkill for now though.
-		if (configManager.getExtensionConfigValue('analysis.mode') === AnalysisMode.Full) {
+		if (gleeceContext.configManager.getExtensionConfigValue('analysis.mode') === AnalysisMode.Full) {
 			// Route the flow to the full diagnostics instead of the smarted albeit (probably) flawed differential flow
 			return this.fullDiagnostics(event.document);
 		}

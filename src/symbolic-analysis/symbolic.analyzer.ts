@@ -1,6 +1,8 @@
-import { TextDocument, commands, DocumentSymbol, SymbolKind, Range, Uri, Position } from 'vscode';
+import {
+	TextDocument, commands, DocumentSymbol, SymbolKind, Range, Uri, Position
+} from 'vscode';
 import { GenericIntervalTree } from '../diagnostics/interval.tree';
-import { GolangSymbol, GolangSymbolType } from './golang.common';
+import { GolangSymbol } from './golang.common';
 import { GolangReceiver } from './golang.receiver';
 import { GolangStruct } from './gonlang.struct';
 export class GolangSymbolicAnalyzer {
@@ -58,26 +60,27 @@ export class GolangSymbolicAnalyzer {
 		);
 
 		if (!symbols) {
-			return new Error(`Could not retrieve symbols for document '${this._document.uri}'`);
+			return new Error(`Could not retrieve symbols for document '${this._document.uri.toString()}'`);
 		}
 
 		this._tree.clear();
 
 		// Iterate over the symbols to find structs and methods
 		let entity: GolangSymbol | undefined;
+		let maybeController: GolangStruct;
 
 		for (const symbol of symbols) {
 			switch (symbol.kind) {
 				case SymbolKind.Struct:
-					const maybeController = new GolangStruct(symbol);
+					maybeController = new GolangStruct(symbol);
 					if (maybeController.isController) {
 						entity = maybeController;
 						this._structs.set(symbol.name, entity);
 					}
 					break;
 				case SymbolKind.Method:
-					const isReceiver = /^\(\*?(?:\w+)\)\./.test(symbol.name);
-					if (isReceiver) {
+					// Check if this is a receiver
+					if (/^\(\*?(?:\w+)\)\./.test(symbol.name)) {
 						const receiver = new GolangReceiver(this._document, symbol);
 						entity = receiver;
 						if (!this._receivers.has(receiver.ownerStructName)) {

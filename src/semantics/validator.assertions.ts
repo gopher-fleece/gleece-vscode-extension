@@ -73,7 +73,7 @@ export function valueMustBeNumeric(attribute: Attribute, mustHaveMessage?: strin
 }
 
 export function valueMustBeValidRoute(attribute: Attribute, mustHaveMessage?: string): Diagnostic[] {
-	/// Matches any sub URL that starts with '/' including empty ones
+	// / Matches any sub URL that starts with '/' including empty ones
 	if (!/^\/((?:(?:[\w\-_]+)|(?:\{[\w\-_]+\}))(?:\/(?:(?:[\w\-_]+)|(?:\{[\w\-_]+\})))*)*$/.exec(attribute.value ?? '')) {
 		return [
 			diagnosticError(
@@ -167,7 +167,7 @@ export function mustBeValidOpenApiName(value: string, diagnosticMessage: string,
 
 
 export function mustNotBeEmpty(value: any, diagnosticMessage: string, range: Range): Diagnostic[] {
-	if (value === null || value === undefined || value === "") {
+	if (value === null || value === undefined || value === '') {
 		return [
 			diagnosticError(
 				diagnosticMessage,
@@ -254,9 +254,10 @@ export function valueMustBeHttpCodeString(attribute: Attribute, mustHaveMessage?
 			return [];
 	}
 
+	const validVerbs = 'GET, POST, PUT, DELETE, PATCH, OPTIONS, HEAD, TRACE, CONNECT';
 	return [
 		diagnosticError(
-			mustHaveMessage ?? `${attribute.name} annotation annotations may only have one of the following values: GET, POST, PUT, DELETE, PATCH, OPTIONS, HEAD, TRACE, CONNECT`,
+			mustHaveMessage ?? `${attribute.name} annotation annotations may only have one of the following values: ${validVerbs}`,
 			attribute.valueRange!,
 			DiagnosticCode.AnnotationValueInvalid
 		)
