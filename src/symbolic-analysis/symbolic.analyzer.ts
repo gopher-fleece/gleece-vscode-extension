@@ -34,6 +34,10 @@ export class GolangSymbolicAnalyzer {
 		return this._tree.findOneImmediatelyAfter(range);
 	}
 
+	public getStructByName(name: string): GolangStruct | undefined {
+		return this._structs.get(name) as GolangStruct;
+	}
+
 	public intersections(range: Range): GolangSymbol[] {
 		return this._tree.searchAll(range);
 	}

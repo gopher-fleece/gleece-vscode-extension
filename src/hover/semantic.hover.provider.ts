@@ -10,14 +10,16 @@ import {
 	HoverProvider,
 	MarkdownString
 } from 'vscode';
-import { AttributeNames, AttributeNamesCompletionObjects, RepeatableAttributes } from '../enums';
-import { getAnnotationProvider, getProvidersForSymbols } from '../annotation/annotation.functional';
+import { AttributeNames, AttributeNamesCompletionObjects, KnownJsonProperties, RepeatableAttributes } from '../enums';
+import { getAnnotationProvider, getProviderForSymbol, getProvidersForSymbols } from '../annotation/annotation.functional';
 import { semanticProvider } from '../semantics/semantics.provider';
 import { GolangSymbolicAnalyzer } from '../symbolic-analysis/symbolic.analyzer';
 import { GolangStruct } from '../symbolic-analysis/gonlang.struct';
-import { GolangSymbolType } from '../symbolic-analysis/golang.common';
+import { GolangSymbol, GolangSymbolType } from '../symbolic-analysis/golang.common';
 import { GolangReceiver } from '../symbolic-analysis/golang.receiver';
-import { createMarkdownTable } from './markdown.factory';
+import { createMarkdownTable } from '../common/markdown.factory';
+import { gleeceContext } from '../context/context';
+import { AnnotationProvider, Attribute } from '../annotation/annotation.provider';
 
 export class SemanticHoverProvider implements HoverProvider {
 
@@ -66,31 +68,31 @@ export class SemanticHoverProvider implements HoverProvider {
 	}
 
 	private async onCommentHover(document: TextDocument, position: Position): Promise<Hover | undefined> {
-		const provider = getAnnotationProvider(document, position);
 		const analyzer = await semanticProvider.getAnalyzerForDocument(document, true);
-		const annotatedSymbol = analyzer.findOneImmediatelyAfter(provider.range);
-		if (annotatedSymbol) {
-			//
-		}
-
-		return undefined;
+		const annotations = getAnnotationProvider(document, position);
+		const symbol = analyzer.findOneImmediatelyAfter(annotations.range);
+		return this.getHoverForSymbol(document, analyzer, symbol);
 	}
 
 	private async onUnknownHover(document: TextDocument, position: Position): Promise<Hover | undefined> {
 		const analyzer = await semanticProvider.getAnalyzerForDocument(document, true);
 		const symbol = analyzer.getSymbolAtPosition(position);
+		return this.getHoverForSymbol(document, analyzer, symbol);
+	}
 
+	private getHoverForSymbol(document: TextDocument, analyzer: GolangSymbolicAnalyzer, symbol?: GolangSymbol): Hover | undefined {
 		switch (symbol?.type) {
 			case GolangSymbolType.Struct:
 				if ((symbol as GolangStruct).isController) {
 					return this.onControllerHover(document, analyzer, symbol as GolangStruct);
 				}
-				return undefined;
-			case GolangSymbolType.Receiver:
 				break;
+			case GolangSymbolType.Receiver:
+				return this.onReceiverHover(document, analyzer, (symbol as GolangReceiver));
 			default:
 				break;
 		}
+
 		return undefined;
 	}
 
@@ -104,9 +106,7 @@ export class SemanticHoverProvider implements HoverProvider {
 			&& (symbol as GolangReceiver).ownerStructName === struct.symbol.name
 		) as GolangReceiver[];
 
-
 		const receiverHolders = getProvidersForSymbols(document, receivers);
-
 		return new Hover(
 			createMarkdownTable(
 				[
@@ -129,5 +129,83 @@ export class SemanticHoverProvider implements HoverProvider {
 				new MarkdownString(`**${struct.symbol.name}**\n\n`)
 			)
 		);
+	}
+
+	private onReceiverHover(
+		document: TextDocument,
+		analyzer: GolangSymbolicAnalyzer,
+		receiver: GolangReceiver
+	): Hover | undefined {
+		const annotations = getProviderForSymbol(document, receiver);
+		if (!annotations) {
+			// Func has no comments. Ignore
+			return undefined;
+		}
+
+		const parentController = analyzer.getStructByName(receiver.ownerStructName);
+		const markdown = new MarkdownString(`**${receiver.name}** (*${parentController?.symbol.name ?? 'N/A'}*)\n\n`);
+
+		const method = annotations.getAttribute(AttributeNames.Method)?.value ?? 'N/A';
+		const route = annotations.getAttribute(AttributeNames.Route)?.value ?? 'N/A';
+
+		markdown.appendMarkdown(`*${method}* \`${route}\`\n`);
+		this.appendReceiverSecurityMarkdown(document, analyzer, receiver, annotations, markdown);
+
+		return new Hover(markdown);
+	}
+
+	private appendReceiverSecurityMarkdown(
+		document: TextDocument,
+		analyzer: GolangSymbolicAnalyzer,
+		receiver: GolangReceiver,
+		annotationsForSymbol: AnnotationProvider,
+		markdown: MarkdownString
+	): void {
+		const methodSecurities = annotationsForSymbol.getSecurities();
+		if (methodSecurities?.length > 0) {
+			markdown.appendMarkdown('- Security - Explicit\n');
+			for (const secAttr of methodSecurities) {
+				markdown.appendMarkdown(`	- *${secAttr.value ?? 'N/A'}* : ${this.getSecurityScopesString(secAttr)}\n`);
+			}
+
+			return;
+		}
+
+		const parentController = analyzer.getStructByName(receiver.ownerStructName);
+		if (!parentController || !parentController.isController) {
+			// Shouldn't happen but just in case.
+			return;
+		}
+
+		const controllerAnnotations = getProviderForSymbol(document, parentController);
+		if (controllerAnnotations) {
+			const controllerSecurities = controllerAnnotations.getSecurities();
+			if (controllerSecurities.length > 0) {
+				markdown.appendMarkdown('- Security - Inherited\n');
+				for (const secAttr of controllerSecurities) {
+					markdown.appendMarkdown(`	- *${secAttr.value ?? 'N/A'}* : ${this.getSecurityScopesString(secAttr)}\n`);
+				}
+
+				return;
+			}
+		}
+
+		const defaultSecurity = gleeceContext.configManager.gleeceConfig?.openAPIGeneratorConfig.defaultSecurity;
+		if (defaultSecurity) {
+			markdown.appendMarkdown('- Security - Default\n');
+			markdown.appendMarkdown(`	- *${defaultSecurity.name}* : ${defaultSecurity.scopes.map((s) => `*${s}*`).join(', ')}\n`);
+			return;
+		}
+
+		markdown.appendMarkdown('- Security - **None**');
+		return;
+	}
+
+	private getSecurityScopesString(attribute: Attribute): string {
+		const scopes = attribute.properties?.[KnownJsonProperties.SecurityScopes];
+		if (scopes && Array.isArray(scopes)) {
+			return scopes.map((s) => `*${s}*`).join(', ');
+		}
+		return 'N/A';
 	}
 }

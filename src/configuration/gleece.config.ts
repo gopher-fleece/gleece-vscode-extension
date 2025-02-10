@@ -61,7 +61,7 @@ export interface OpenAPIGeneratorConfig {
 	info: Info; // Required
 	baseUrl: string; // Required, must be a valid URL
 	securitySchemes: SecuritySchemeConfig[]; // Required, non-empty array
-	defaultSecurity: RouteSecurity[]; // Required, non-empty array
+	defaultSecurity: SecurityAnnotationComponent; // Required, non-empty array
 	specGeneratorConfig: SpecGeneratorConfig; // Required
 }
 

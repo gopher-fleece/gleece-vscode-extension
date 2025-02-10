@@ -16,14 +16,11 @@ export async function activate(context: ExtensionContext) {
 	await gleeceContext.init(context);
 	logger.debug('Gleece Extension activating...');
 	context.subscriptions.push(
+		// Moving these to the context
 		languages.registerCompletionItemProvider(
 			GoLangId,
 			gleeceContext.completionAndHoverProvider,
 			'@'
-		),
-		languages.registerHoverProvider(
-			{ scheme: 'file', language: GoLangId },
-			gleeceContext.hoverProvider
 		),
 		languages.registerCodeActionsProvider(
 			{ scheme: 'file', language: GoLangId },
@@ -39,7 +36,7 @@ export async function activate(context: ExtensionContext) {
 				gleeceContext.diagnosticsListener.fullDiagnostics(window.activeTextEditor.document)
 					.catch((err) => logger.error('Could not re-analyze file', err));
 			} else {
-				window.showWarningMessage('Cannot re-analyze - no file is open');
+				logger.warnPopup('Cannot re-analyze - no file is open');
 			}
 		})
 	);

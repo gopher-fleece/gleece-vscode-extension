@@ -19,6 +19,16 @@ class Logger implements Disposable {
 		this.write(`[WARN]  ${message}`);
 	}
 
+	public warnPopup(message: string): void {
+		this.warn(message);
+		window.showWarningMessage(message);
+	}
+
+	public errorPopup(message: string): void {
+		this.warn(message);
+		window.showErrorMessage(message);
+	}
+
 	public error(message: string, error?: { toString: () => string }): void {
 		this.write(`[ERROR] ${message}`);
 		if (error) {

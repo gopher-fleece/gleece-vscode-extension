@@ -3,7 +3,6 @@ import {
 	ConfigurationChangeEvent,
 	FileSystemWatcher,
 	Uri,
-	window,
 	workspace,
 	WorkspaceConfiguration
 } from 'vscode';
@@ -15,6 +14,17 @@ import { logger } from '../logging/logger';
 import { gleeceContext } from '../context/context';
 import { ITypedEvent, TypedEvent } from 'weak-event';
 
+export interface ConfigValueChangedEvent<TKey extends Paths<GleeceExtensionConfig>> {
+	previousValue?: PathValue<GleeceExtensionConfig, TKey>;
+	newValue?: PathValue<GleeceExtensionConfig, TKey>;
+}
+
+type ConfigValueChangedEventHandler<
+	TKey extends Paths<GleeceExtensionConfig>
+> = (
+	e: ConfigValueChangedEvent<TKey>
+) => any;
+
 export class ConfigManager {
 	private _extensionConfig?: WorkspaceConfiguration;
 
@@ -23,7 +33,7 @@ export class ConfigManager {
 
 	private _securitySchemaNames?: string[];
 
-	private _registeredConfigHandlers: Map<Paths<GleeceExtensionConfig>, ((value?: any) => any)[]> = new Map();
+	private _registeredConfigHandlers: Map<Paths<GleeceExtensionConfig>, ConfigValueChangedEventHandler<any>[]> = new Map();
 	private _extensionConfigChanged: TypedEvent<ConfigManager, ConfigurationChangeEvent> = new TypedEvent();
 
 	public get gleeceConfig(): GleeceConfig | undefined {
@@ -60,7 +70,7 @@ export class ConfigManager {
 
 	public registerConfigListener<TKey extends Paths<GleeceExtensionConfig>>(
 		configKey: TKey,
-		handler: (newValue?: PathValue<GleeceExtensionConfig, TKey>) => any
+		handler: ConfigValueChangedEventHandler<TKey>
 	): void {
 		const existingHandlers = this._registeredConfigHandlers.get(configKey) ?? [];
 		this._registeredConfigHandlers.set(configKey, existingHandlers.concat(handler));
@@ -68,7 +78,7 @@ export class ConfigManager {
 
 	public unregisterConfigListener<TKey extends Paths<GleeceExtensionConfig>>(
 		configKey: TKey,
-		handler: (newValue?: PathValue<GleeceExtensionConfig, TKey>) => any
+		handler: ConfigValueChangedEventHandler<TKey>
 	): void {
 		const existingHandlers = this._registeredConfigHandlers.get(configKey) ?? [];
 		const idx = existingHandlers.findIndex((existingHandler) => existingHandler === handler);
@@ -80,8 +90,12 @@ export class ConfigManager {
 
 	private async onExtensionConfigChanged(event: ConfigurationChangeEvent): Promise<void> {
 		// First, if the change affects our root, re-fetch the entire configuration
+		const oldConfig = this._extensionConfig;
 		if (event.affectsConfiguration('gleece')) {
 			this._extensionConfig = workspace.getConfiguration(ExtensionRootNamespace);
+		} else {
+			// No point in continuing if our namespace hasn't changed
+			return;
 		}
 
 		// Then, if it affects the gleece.config path, we need to re-load the file and re-initialize the watcher
@@ -98,10 +112,12 @@ export class ConfigManager {
 		// Finally, we notify the specific event listeners and provide the freshly obtained config value
 		const dispatchPromises: Promise<any>[] = [];
 		for (const key of this._registeredConfigHandlers.keys()) {
-			if (event.affectsConfiguration(`gleece.${key}`)) {
+			const fullConfigKey = `gleece.${key}`;
+			if (event.affectsConfiguration(fullConfigKey)) {
+				const previousValue = oldConfig ? oldConfig.get(key) : undefined;
 				const newValue = this.getExtensionConfigValue(key);
 				for (const handler of this._registeredConfigHandlers.get(key) ?? []) {
-					dispatchPromises.push(handler(newValue));
+					dispatchPromises.push(handler({ previousValue, newValue }));
 				}
 			}
 		}
@@ -116,14 +132,14 @@ export class ConfigManager {
 		const configPath = this.getExtensionConfigValue('config.path') ?? 'gleece.config.json';
 		const { error, data } = await this.loadFile(configPath);
 		if (error) {
-			window.showErrorMessage(`Failed to load configuration file: ${(error as any)?.message}`);
+			logger.errorPopup(`Failed to load configuration file: ${(error as any)?.message}`);
 			return;
 		}
 		try {
 			this._gleeceConfig = JSON.parse(data);
 			this._securitySchemaNames = undefined;
 		} catch (error) {
-			window.showErrorMessage(`Could not parse Gleece configuration file at '${configPath}' -  ${(error as any)?.message}`);
+			logger.errorPopup(`Could not parse Gleece configuration file at '${configPath}' -  ${(error as any)?.message}`);
 		}
 	}
 

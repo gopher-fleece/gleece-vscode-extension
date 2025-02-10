@@ -126,6 +126,11 @@ export class AnnotationProvider {
 		return this._attributes.map((attr) => attr.name);
 	}
 
+	public getSecurities(): Attribute[] {
+		const secAttrNames: string[] = [AttributeNames.Security, AttributeNames.AdvancedSecurity];
+		return this._attributes.filter((attr) => secAttrNames.includes(attr.name)) ?? [];
+	}
+
 	// Public method to get non-attribute comments (indexed by line number)
 	public getNonAttributeComments(): NonAttributeComment[] {
 		return this._nonAttributeComments;
