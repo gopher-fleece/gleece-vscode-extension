@@ -30,6 +30,10 @@ export const STD_NAME_AND_VALIDATION_CONFIG: PropertyValidationConfig[] = [
 	{ name: 'validate' }
 ];
 
+export const STD_VALIDATION_CONFIG: PropertyValidationConfig[] = [
+	{ name: 'validate' }
+];
+
 export const STD_SCOPES_CONFIG: PropertyValidationConfig[] = [
 	{
 		name: 'scopes', validations: [
@@ -63,7 +67,7 @@ export const KNOWN_PROPERTIES: { [Key in AttributeNames]: PropertyValidationConf
 	[AttributeNames.Tag]: [],
 	[AttributeNames.Query]: STD_NAME_AND_VALIDATION_CONFIG,
 	[AttributeNames.Path]: STD_NAME_AND_VALIDATION_CONFIG,
-	[AttributeNames.Body]: STD_NAME_AND_VALIDATION_CONFIG,
+	[AttributeNames.Body]: STD_VALIDATION_CONFIG,
 	[AttributeNames.Header]: STD_NAME_AND_VALIDATION_CONFIG,
 	[AttributeNames.Deprecated]: [],
 	[AttributeNames.Hidden]: [],
