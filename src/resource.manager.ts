@@ -7,8 +7,8 @@ export class ResourceManager {
 		this._context = context;
 	}
 
-	public registerDisposable(disposable: Disposable): void {
-		this._context.subscriptions.push(disposable);
+	public registerDisposable(...disposable: Disposable[]): void {
+		this._context.subscriptions.push(...disposable);
 	}
 
 	public unRegisterDisposable(disposable: Disposable): void {

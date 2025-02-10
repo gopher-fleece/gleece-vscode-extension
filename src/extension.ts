@@ -1,45 +1,14 @@
 
-import {
-	CodeActionKind,
-	commands,
-	ExtensionContext,
-	languages,
-	window,
-	workspace
-} from 'vscode';
-import { GoLangId } from './common.constants';
+import { ExtensionContext, window } from 'vscode';
 import { gleeceContext } from './context/context';
 import { logger } from './logging/logger';
 
 export async function activate(context: ExtensionContext) {
-	// DO NOT CALL LOGGER ABOVE THIS POINT.
-	await gleeceContext.init(context);
+	const start = Date.now();
 	logger.debug('Gleece Extension activating...');
-	context.subscriptions.push(
-		// Moving these to the context
-		languages.registerCompletionItemProvider(
-			GoLangId,
-			gleeceContext.completionAndHoverProvider,
-			'@'
-		),
-		languages.registerCodeActionsProvider(
-			{ scheme: 'file', language: GoLangId },
-			gleeceContext.codeActionsProvider,
-			{ providedCodeActionKinds: [CodeActionKind.QuickFix, CodeActionKind.SourceFixAll] }
-		),
-		workspace.onDidOpenTextDocument((document) => gleeceContext.diagnosticsListener.fullDiagnostics(document)),
-		workspace.onDidChangeTextDocument((event) => gleeceContext.diagnosticsListener.differentialDiagnostics(event)),
-		workspace.onDidCloseTextDocument((document) => gleeceContext.diagnosticsListener.textDocumentClosed(document)),
 
-		commands.registerCommand('gleece.reAnalyzeFile', () => {
-			if (window.activeTextEditor) {
-				gleeceContext.diagnosticsListener.fullDiagnostics(window.activeTextEditor.document)
-					.catch((err) => logger.error('Could not re-analyze file', err));
-			} else {
-				logger.warnPopup('Cannot re-analyze - no file is open');
-			}
-		})
-	);
+	await gleeceContext.init(context);
+	context.subscriptions.push(gleeceContext);
 
 	// It would appear there might be a delay between when VS Code calls activate and the time
 	// the active text editor updates.
@@ -47,17 +16,19 @@ export async function activate(context: ExtensionContext) {
 	setTimeout(
 		() => {
 			if (window.activeTextEditor) {
-				gleeceContext.diagnosticsListener.fullDiagnostics(window.activeTextEditor.document)
+				gleeceContext.diagnosticsListener.onDemandFullDiagnostics(window.activeTextEditor.document)
 					.catch((err) => logger.error('Could not analyze file', err));
 			}
 		},
 		500
 	);
-	logger.debug('Gleece Extension activated');
+
+	logger.debug(`Gleece Extension activated in ${Date.now() - start}ms`);
 }
 
 export function deactivate() {
 	logger.debug('Gleece Extension deactivating...');
-	gleeceContext.deactivate();
-	logger.debug('Gleece Extension deactivated');
+	const start = Date.now();
+	gleeceContext.dispose();
+	logger.debug(`Gleece Extension deactivated in ${Date.now() - start}ms`);
 }

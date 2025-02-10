@@ -1,10 +1,19 @@
-import { Disposable, ExtensionContext, HoverProvider, languages } from 'vscode';
+import {
+	CodeActionKind,
+	commands,
+	Disposable,
+	ExtensionContext,
+	HoverProvider,
+	languages,
+	window,
+	workspace
+} from 'vscode';
 import { GleeceCodeActionProvider } from '../code-actions/code.action.provider';
 import { SimpleCompletionProvider } from '../completion/gleece.simple.completion.provider';
-import { GleeceDiagnosticsListener } from '../diagnostics/listener';
+import { GleeceDiagnosticsProvider } from '../diagnostics/provider';
 import { SemanticHoverProvider } from '../hover/semantic.hover.provider';
 import { ResourceManager } from '../resource.manager';
-import { ConfigManager, ConfigValueChangedEvent } from '../configuration/config.manager';
+import { ConfigManager, ExtensionConfigValueChangedEvent } from '../configuration/config.manager';
 import { logger } from '../logging/logger';
 import { SimpleHoverProvider } from '../hover/simple.hover.provider';
 import { GoLangId } from '../common.constants';
@@ -15,7 +24,7 @@ class GleeceContext implements Disposable {
 
 	private _completionAndHoverProvider!: SimpleCompletionProvider;
 	private _codeActionsProvider!: GleeceCodeActionProvider;
-	private _diagnosticsListener!: GleeceDiagnosticsListener;
+	private _diagnosticsProvider!: GleeceDiagnosticsProvider;
 
 	private _hoverProviderRegistration?: Disposable;
 	private _hoverProvider!: HoverProvider;
@@ -32,8 +41,8 @@ class GleeceContext implements Disposable {
 		return this._codeActionsProvider;
 	}
 
-	public get diagnosticsListener(): GleeceDiagnosticsListener {
-		return this._diagnosticsListener;
+	public get diagnosticsListener(): GleeceDiagnosticsProvider {
+		return this._diagnosticsProvider;
 	}
 
 	public get configManager(): ConfigManager {
@@ -48,15 +57,64 @@ class GleeceContext implements Disposable {
 
 		this._completionAndHoverProvider = new SimpleCompletionProvider();
 		this._codeActionsProvider = new GleeceCodeActionProvider();
-		this._diagnosticsListener = new GleeceDiagnosticsListener();
+		this._diagnosticsProvider = new GleeceDiagnosticsProvider();
 
 		// The logger is registered here so it's collected upon deactivation.
 		// The reasoning is that delegating disposal to the logger itself creates a cyclic dependency.
 		this._resourceManager.registerDisposable(logger);
 
-		this._configManager.registerConfigListener('analysis.enableSymbolicAwareness', this.onChangeSemanticAnalysis.bind(this));
+		this._configManager.registerConfigListener('analysis.enableSymbolicAwareness', this.onChangeSymbolicAwareness.bind(this));
 		const useSemanticAnalysis = this._configManager.getExtensionConfigValue('analysis.enableSymbolicAwareness') ?? false;
-		this.onChangeSemanticAnalysis({ previousValue: undefined, newValue: useSemanticAnalysis });
+		this.onChangeSymbolicAwareness({ previousValue: undefined, newValue: useSemanticAnalysis });
+
+		// Note that the 'hover' provider is currently registered in onChangeSemanticAnalysis, not the registerProviders method.
+		// Will need to revamp.
+		this.registerProviders();
+		this.registerEvents();
+		this.registerCommands();
+	}
+
+	private registerProviders(): void {
+		this._resourceManager.registerDisposable(
+			languages.registerCompletionItemProvider(
+				GoLangId,
+				this.completionAndHoverProvider,
+				'@'
+			),
+
+			languages.registerCodeActionsProvider(
+				{ scheme: 'file', language: GoLangId },
+				this.codeActionsProvider,
+				{ providedCodeActionKinds: [CodeActionKind.QuickFix, CodeActionKind.SourceFixAll] }
+			)
+		);
+	}
+
+	private registerEvents(): void {
+		this._resourceManager.registerDisposable(
+			workspace.onDidOpenTextDocument((document) => this.diagnosticsListener.onDemandFullDiagnostics(document)),
+			workspace.onDidChangeTextDocument(async (event) => {
+				if (event.document === window.activeTextEditor?.document && event.document.languageId === GoLangId) {
+					await this.diagnosticsListener.onCurrentDocumentChanged(event);
+				}
+			}),
+			workspace.onDidCloseTextDocument((document) => this.diagnosticsListener.onDocumentClosed(document))
+		);
+
+		this._configManager.gleeceConfigChanged.attach(this.invokeReAnalyze.bind(this));
+	}
+
+	private registerCommands(): void {
+		this._resourceManager.registerDisposable(
+			commands.registerCommand('gleece.reAnalyzeFile', () => {
+				if (window.activeTextEditor) {
+					this.diagnosticsListener.onDemandFullDiagnostics(window.activeTextEditor.document)
+						.catch((err) => logger.error('Could not re-analyze file', err));
+				} else {
+					logger.warnPopup('Cannot re-analyze - no file is open');
+				}
+			})
+		);
 	}
 
 	public registerDisposable(disposable: Disposable): void {
@@ -67,15 +125,13 @@ class GleeceContext implements Disposable {
 		this._resourceManager.unRegisterDisposable(disposable);
 	}
 
-	public deactivate(): void {
-		this._diagnosticsListener.deactivate();
-	}
-
 	public dispose(): void {
-		this._configManager.unregisterConfigListener('analysis.enableSymbolicAwareness', this.onChangeSemanticAnalysis.bind(this));
+		this._configManager.dispose();
+		this._diagnosticsProvider.dispose();
+		this._hoverProviderRegistration?.dispose?.();
 	}
 
-	private onChangeSemanticAnalysis(event: ConfigValueChangedEvent<'analysis.enableSymbolicAwareness'>): void {
+	private onChangeSymbolicAwareness(event: ExtensionConfigValueChangedEvent<'analysis.enableSymbolicAwareness'>): void {
 		if (event.previousValue === event.newValue) {
 			// No change. Noop.
 			// Config manager should not call this if value hasn't changed so this check is more to
@@ -87,7 +143,6 @@ class GleeceContext implements Disposable {
 			// Manually dispose the provider here then unregister it.
 			// Similar to C# dispose pattern with finalizer
 			this._hoverProviderRegistration.dispose();
-			this._resourceManager.unRegisterDisposable(this._hoverProviderRegistration);
 		}
 
 		this._hoverProvider = event.newValue === true ? new SemanticHoverProvider() : new SimpleHoverProvider();
@@ -96,7 +151,12 @@ class GleeceContext implements Disposable {
 			this._hoverProvider
 		);
 
-		this.resourceManager.registerDisposable(this._hoverProviderRegistration);
+		this.invokeReAnalyze();
+	}
+
+	private invokeReAnalyze(): void {
+		this._diagnosticsProvider.reAnalyzeLastDocument()
+			.catch((err) => logger.error(`Failed during re-analysis following a configuration change - ${err}`));
 	}
 }
 

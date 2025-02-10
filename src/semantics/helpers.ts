@@ -19,6 +19,7 @@ export function validateProperties(attribute: Attribute): Diagnostic[] {
 			if (suggestion) {
 				messageStr += `. Did you mean \`${suggestion}\`?`;
 			}
+
 			diagnostics.push(
 				diagnosticWarning(
 					messageStr,
@@ -26,6 +27,7 @@ export function validateProperties(attribute: Attribute): Diagnostic[] {
 					DiagnosticCode.AnnotationPropertiesUnknownKey
 				)
 			);
+
 			continue;
 		}
 
@@ -33,6 +35,7 @@ export function validateProperties(attribute: Attribute): Diagnostic[] {
 			diagnostics.push(...validatePropertySequence(attribute, key, value, propConf.validations));
 		}
 	}
+
 	return diagnostics;
 }
 

@@ -1,6 +1,7 @@
 import {
 	Diagnostic,
 	DiagnosticCollection,
+	Disposable,
 	languages,
 	TextDocument,
 	TextDocumentChangeEvent
@@ -12,25 +13,49 @@ import { GenericIntervalTree } from './interval.tree';
 import { AnalysisMode } from '../configuration/extension.config';
 import { semanticProvider } from '../semantics/semantics.provider';
 import { gleeceContext } from '../context/context';
+import { logger } from '../logging/logger';
 
-export class GleeceDiagnosticsListener {
-
+export class GleeceDiagnosticsProvider implements Disposable {
+	private _currentDocument?: TextDocument;
 	private _diagnosticCollection: DiagnosticCollection;
 	private _tree: GenericIntervalTree<AnnotationProvider>;
 
 	public constructor() {
 		this._diagnosticCollection = languages.createDiagnosticCollection('gleece');
-		gleeceContext.registerDisposable(this._diagnosticCollection);
 		this._tree = new GenericIntervalTree();
 	}
 
-	public async fullDiagnostics(document: TextDocument): Promise<void> {
+	public async onCurrentDocumentChanged(event: TextDocumentChangeEvent): Promise<void> {
+		if (event.document.languageId !== GoLangId) {
+			return;
+		}
+
+		this._currentDocument = event.document;
+		const mode = gleeceContext.configManager.getExtensionConfigValue('analysis.mode');
+		if (mode === AnalysisMode.Differential) {
+			return this.differentialDiagnostics(event);
+		}
+
+		// Default to full diagnostics
+		return await this.onDemandFullDiagnostics(event.document);
+	}
+
+	public async reAnalyzeLastDocument(): Promise<void> {
+		if (this._currentDocument) {
+			await this.onDemandFullDiagnostics(this._currentDocument);
+		}
+	}
+
+	public async onDemandFullDiagnostics(document: TextDocument): Promise<void> {
 		if (document.languageId !== GoLangId) {
 			return;
 		}
 
+		this._currentDocument = document;
+		const start = Date.now(); // Need to define a better way than simple logs (preferably not application insights though)
 		let diagnostics: Diagnostic[];
-		if (gleeceContext.configManager.getExtensionConfigValue('analysis.enableSymbolicAwareness')) {
+		const symbolicAnalysisEnabled = gleeceContext.configManager.getExtensionConfigValue('analysis.enableSymbolicAwareness');
+		if (symbolicAnalysisEnabled) {
 			diagnostics = await this.fullDiagnosticsWithSymbolicAnalysis(document);
 		} else {
 			diagnostics = this.fullDiagnosticsSlim(document);
@@ -40,9 +65,12 @@ export class GleeceDiagnosticsListener {
 
 		this._diagnosticCollection.clear();
 		this._diagnosticCollection.set(document.uri, diagnostics);
+		logger.debug(
+			`Full diagnostics ${symbolicAnalysisEnabled ? 'with' : 'without'} symbolic analysis performed in ${Date.now() - start}ms`
+		);
 	}
 
-	public fullDiagnosticsSlim(document: TextDocument): Diagnostic[] {
+	protected fullDiagnosticsSlim(document: TextDocument): Diagnostic[] {
 		if (document.languageId !== GoLangId) {
 			return [];
 		}
@@ -60,7 +88,7 @@ export class GleeceDiagnosticsListener {
 		return diagnostics;
 	}
 
-	public async fullDiagnosticsWithSymbolicAnalysis(document: TextDocument): Promise<Diagnostic[]> {
+	protected async fullDiagnosticsWithSymbolicAnalysis(document: TextDocument): Promise<Diagnostic[]> {
 		const diagnostics: Diagnostic[] = [];
 
 		// Currently always refreshing the analyzer- keeping track of changes to this degree would be quite complex.
@@ -78,7 +106,7 @@ export class GleeceDiagnosticsListener {
 		return diagnostics;
 	}
 
-	public async differentialDiagnostics(event: TextDocumentChangeEvent): Promise<void> {
+	private differentialDiagnostics(event: TextDocumentChangeEvent): void {
 		if (event.document.languageId !== GoLangId) {
 			return;
 		}
@@ -87,13 +115,7 @@ export class GleeceDiagnosticsListener {
 			return;
 		}
 
-		// This could be re-written as a private state mutated by an event.
-		// A bit overkill for now though.
-		if (gleeceContext.configManager.getExtensionConfigValue('analysis.mode') === AnalysisMode.Full) {
-			// Route the flow to the full diagnostics instead of the smarted albeit (probably) flawed differential flow
-			return this.fullDiagnostics(event.document);
-		}
-
+		const start = Date.now();
 		this.updateProviders(event);
 
 		let diagnostics: Diagnostic[] = [];
@@ -110,6 +132,8 @@ export class GleeceDiagnosticsListener {
 		if (diagnostics.length > 0) {
 			this._diagnosticCollection.set(event.document.uri, diagnostics);
 		}
+
+		logger.debug(`Differential diagnostics performed in ${Date.now() - start}ms`);
 	}
 
 	private updateProviders(event: TextDocumentChangeEvent) {
@@ -161,11 +185,15 @@ export class GleeceDiagnosticsListener {
 		}
 	}
 
-	public textDocumentClosed(document: TextDocument) {
+	public onDocumentClosed(document: TextDocument) {
 		this._diagnosticCollection.delete(document.uri);
+		if (document.uri === this._currentDocument?.uri) {
+			this._currentDocument = undefined;
+		}
 	}
 
-	public deactivate(): void {
+	public dispose() {
 		this._diagnosticCollection.clear();
+		this._diagnosticCollection.dispose();
 	}
 }
