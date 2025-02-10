@@ -5,6 +5,7 @@ import { KNOWN_PROPERTIES } from './configuration';
 import { Validation, PropertyValidation, ValidationSequences } from './types';
 import { diagnosticWarning } from '../diagnostics/helpers';
 import { DiagnosticCode } from '../diagnostics/enums';
+import didYouMean from 'didyoumean';
 
 export function validateProperties(attribute: Attribute): Diagnostic[] {
 	const diagnostics: Diagnostic[] = [];
@@ -12,9 +13,15 @@ export function validateProperties(attribute: Attribute): Diagnostic[] {
 		const knownProps = KNOWN_PROPERTIES[attribute.name as AttributeNames];
 		const propConf = knownProps?.find((config) => config.name === key);
 		if (!propConf) {
+			let messageStr = `'${key}' is not a known property of ${attribute.name}`;
+
+			const suggestion = didYouMean(key, knownProps?.map((config) => config.name) ?? []);
+			if (suggestion) {
+				messageStr += `. Did you mean \`${suggestion}\`?`;
+			}
 			diagnostics.push(
 				diagnosticWarning(
-					`'${key}' is not a known property of ${attribute.name}`,
+					messageStr,
 					attribute.propertiesRange!,
 					DiagnosticCode.AnnotationPropertiesUnknownKey
 				)
