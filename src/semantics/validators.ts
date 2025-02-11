@@ -19,6 +19,7 @@ import {
 import { diagnosticError } from '../diagnostics/helpers';
 import { DiagnosticCode } from '../diagnostics/enums';
 import { gleeceContext } from '../context/context';
+import didYouMean from 'didyoumean';
 
 
 function validateMethod(attribute: Attribute): Diagnostic[] {
@@ -101,12 +102,15 @@ function validateSecurity(attribute: Attribute): Diagnostic[] {
 				{
 					breakOnFailure: false,
 					validator: (attribute: Attribute) => {
-						const validSchemaName = gleeceContext.configManager.securitySchemaNames.includes(attribute.value!);
+						const validNames = gleeceContext.configManager.securitySchemaNames;
+						const validSchemaName = validNames.includes(attribute.value!);
 						if (!validSchemaName) {
+							const suggestion = didYouMean(attribute.value ?? '', validNames);
 							return [diagnosticError(
 								`Schema '${attribute.value}' is not specified in ` +
 								`${gleeceContext.configManager.getExtensionConfigValue('config.path')}.\n` +
-								`Known schemas are: ${gleeceContext.configManager.securitySchemaNames.join(', ')}`,
+								(suggestion ? `Did you mean \`${suggestion}\`?\n` : '') +
+								`Known schemas are: ${validNames.join(', ')}`,
 								attribute.valueRange!,
 								DiagnosticCode.AnnotationPropertiesInvalidValueForKey
 							)];

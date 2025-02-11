@@ -94,7 +94,11 @@ class GleeceContext implements Disposable {
 		this._resourceManager.registerDisposable(
 			workspace.onDidOpenTextDocument((document) => this.diagnosticsListener.onDemandFullDiagnostics(document)),
 			workspace.onDidChangeTextDocument(async (event) => {
-				if (event.document === window.activeTextEditor?.document && event.document.languageId === GoLangId) {
+				if (
+					event.document === window.activeTextEditor?.document
+					&& event.document.languageId === GoLangId
+					&& event.contentChanges.length > 0
+				) {
 					await this.diagnosticsListener.onCurrentDocumentChanged(event);
 				}
 			}),
