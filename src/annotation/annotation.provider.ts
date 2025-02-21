@@ -205,6 +205,12 @@ export class AnnotationProvider {
 		return counts;
 	}
 
+	public getAttributesByName(name: AttributeNames): Attribute[] {
+		// Intentional - preferring to keep the name field a plain 'string'
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison
+		return this._attributes.filter((attr) => attr.name === name);
+	}
+
 	public getDiagnostics(withCache?: boolean): Diagnostic[] {
 		if (withCache && this._lastValidationResult !== undefined) {
 			return this._lastValidationResult;

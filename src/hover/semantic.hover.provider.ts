@@ -122,7 +122,7 @@ export class SemanticHoverProvider implements HoverProvider {
 					},
 					{
 						label: 'Route',
-						maxWidth: 45,
+						maxWidth: 50,
 						values: receiverHolders.map((r) => (`\`${r.getAttribute(AttributeNames.Route)?.value ?? ''}\``))
 					}
 				],

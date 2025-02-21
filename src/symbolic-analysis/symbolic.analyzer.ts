@@ -1,10 +1,17 @@
 import {
-	TextDocument, commands, DocumentSymbol, SymbolKind, Range, Uri, Position
+	TextDocument,
+	commands,
+	DocumentSymbol,
+	SymbolKind,
+	Range,
+	Uri,
+	Position
 } from 'vscode';
 import { GenericIntervalTree } from '../diagnostics/interval.tree';
 import { GolangSymbol } from './golang.common';
 import { GolangReceiver } from './golang.receiver';
 import { GolangStruct } from './gonlang.struct';
+
 export class GolangSymbolicAnalyzer {
 	private _document: TextDocument;
 

@@ -1,6 +1,7 @@
 import { TextDocument, Position, Range } from 'vscode';
 import { AnnotationProvider, Attribute, CommentWithPosition } from './annotation.provider';
 import { GolangSymbol } from '../symbolic-analysis/golang.common';
+import { KnownJsonProperties } from '../enums';
 
 export function getAnnotationProvider(document: TextDocument, position: Position): AnnotationProvider {
 	// Extract comments relevant to the cursor (above and below), including their line positions
@@ -139,3 +140,21 @@ export function getAttributeRange(attribute: Attribute): Range {
 		endRange.end.character
 	);
 }
+
+/**
+ * Gets an attribute's Name **property**, if one exists, or its value, if it does not.
+ * The returned value (if defined) can serve as an alias. For example, given a @Path attribute,
+ * the alias will be the expected URL parameter name and **not** the function parameter name
+ *
+ * @export
+ * @param {Attribute} attribute
+ * @return {string}
+ */
+export function getAttributeAlias(attribute: Attribute): string | undefined {
+	return attribute.properties?.[KnownJsonProperties.Name] ?? attribute.value;
+}
+
+export function getAttributeValueRangeOrFullRange(attribute: Attribute): Range {
+	return attribute.valueRange ?? getAttributeRange(attribute);
+}
+
