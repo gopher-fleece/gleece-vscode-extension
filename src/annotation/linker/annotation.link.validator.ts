@@ -13,6 +13,15 @@ interface ClassifiedAttributes {
 	nonPathAttributes: Map<string, Attribute>;
 }
 
+/**
+ * Provides annotation/URL/function parameters cross-validation
+ *
+ * @description The purpose of this class is to analyze the linkages between URL parameters,
+ * annotations and the annotated receiver's parameters.
+ *
+ * @export
+ * @class AnnotationLinkValidator
+ */
 export class AnnotationLinkValidator {
 	constructor(
 		private readonly _functionSymbol: GolangReceiver,
@@ -25,9 +34,11 @@ export class AnnotationLinkValidator {
 	 * Performed checks:
 	 *
 	 * * Each URL parameter may only appear once
-	 * * Each URL parameter must have a matching `Path` annotation
-	 * * Each `Path` annotation must link to a `Route` URL parameter via *Alias* or *Value*
+	 * * Each URL parameter must have a matching `@Path` annotation
+	 * * Each `@Path` annotation must link to a `@Route` URL parameter via *Alias* or *Value*
 	 * * Each `@Path` annotation must link to a function parameter via *Value*
+	 * * `@Path` annotation values must be unique
+	 * * `@Path` annotation aliases must be unique
 	 * * Each function parameter must be referenced by *exactly* one `@Path`/`@Query`/`@Header`/`@Body` annotation
 	 *
 	 * @return {Diagnostic[]}
@@ -42,7 +53,7 @@ export class AnnotationLinkValidator {
 		// 1. Classify the attributes into parameters for link checking.
 		const { routeAttribute, pathAttributes, nonPathAttributes } = this.classifyAttributes();
 
-		// 2. Validate @Route parameters against @Path attributes
+		// 2. Check @Route parameters for duplications and matching matching @Path attributes
 		if (routeAttribute) {
 			diagnostics.push(...this.validateRoute(pathAttributes, routeAttribute));
 		}
@@ -105,42 +116,16 @@ export class AnnotationLinkValidator {
 		return { routeAttribute, pathAttributes, nonPathAttributes };
 	}
 
-	private validateDuplicatePathRefAndAliases(pathAttributes: Attribute[]): Diagnostic[] {
-		const diagnostics: Diagnostic[] = [];
-
-		const seenRefValues = new Set<string>();
-		const seenAliases = new Set<string>();
-
-		for (const pathAttr of pathAttributes) {
-			const expectedFuncParamName = pathAttr.value!;
-
-			if (seenRefValues.has(expectedFuncParamName)) {
-				diagnostics.push(diagnosticError(
-					`Duplicate @Path parameter reference '${expectedFuncParamName}'`,
-					getAttributeRange(pathAttr),
-					DiagnosticCode.LinkerDuplicatePathParamRef
-				));
-			} else {
-				seenRefValues.add(expectedFuncParamName);
-			}
-
-			const alias = pathAttr.properties?.[KnownJsonProperties.Name];
-			if (alias) {
-				if (seenAliases.has(alias)) {
-					diagnostics.push(diagnosticError(
-						`Duplicate @Path parameter alias '${alias}'`,
-						getAttributeRange(pathAttr),
-						DiagnosticCode.LinkerDuplicatePathAliasRef
-					));
-				} else {
-					seenAliases.add(alias);
-				}
-			}
-		}
-
-		return diagnostics;
-	}
-
+	/**
+	 * Validates a given route does not have duplicate parameters and has all its parameters
+	 * referenced by matching `@Path` annotations
+	 *
+	 * @private
+	 * @param {Attribute[]} pathAttributes
+	 * @param {Attribute} routeAttribute
+	 * @return {Diagnostic[]}
+	 * @memberof AnnotationLinkValidator
+	 */
 	private validateRoute(pathAttributes: Attribute[], routeAttribute: Attribute): Diagnostic[] {
 		const diagnostics: Diagnostic[] = [];
 
@@ -199,9 +184,10 @@ export class AnnotationLinkValidator {
 		const urlParams = new Set(this.extractUrlParams(routeAttribute?.value ?? ''));
 
 		for (const pathAttr of pathAttributes) {
-			// Note that func params are referenced by the Value field, not the alias!
+			// Note that func params are referenced by the Value field, not the alias.
 			const expectedFuncParamName = pathAttr.value!;
 
+			// Check if the path references a known func parameter
 			if (!funcParamNames.has(expectedFuncParamName)) {
 				const suggestion = this.getContextualAppendedSuggestion(
 					expectedFuncParamName,
@@ -214,6 +200,7 @@ export class AnnotationLinkValidator {
 					DiagnosticCode.LinkerPathInvalidRef
 				));
 			} else {
+				// Check if the referenced parameter has already been linked by a different annotation
 				if (seenFuncParams.has(expectedFuncParamName)) {
 					diagnostics.push(diagnosticError(
 						`Function parameter '${expectedFuncParamName}' is referenced by multiple @Path attributes`,
@@ -224,6 +211,7 @@ export class AnnotationLinkValidator {
 				seenFuncParams.set(expectedFuncParamName, pathAttr);
 			}
 
+			// Check if the Path value appears multiple times
 			if (seenRefValues.has(expectedFuncParamName)) {
 				diagnostics.push(diagnosticError(
 					`Duplicate @Path parameter reference '${expectedFuncParamName}'`,
@@ -236,6 +224,7 @@ export class AnnotationLinkValidator {
 
 			const alias = pathAttr.properties?.[KnownJsonProperties.Name];
 			if (alias) {
+				// Check if the Path's alias (i.e. 'name' property) appears multiple times
 				if (seenAliases.has(alias)) {
 					diagnostics.push(diagnosticError(
 						`Duplicate @Path parameter alias '${alias}'`,
@@ -246,6 +235,7 @@ export class AnnotationLinkValidator {
 					seenAliases.add(alias);
 				}
 
+				// Check if the alias exists as a URL parameter
 				if (!urlParams.has(alias)) {
 					const suggestion = this.getAppendedSuggestion(alias, Array.from(urlParams));
 					diagnostics.push(diagnosticError(
@@ -300,14 +290,23 @@ export class AnnotationLinkValidator {
 	}
 
 	/**
-	 * Extracts path parameters from a route string.
-	 * Example: "/user/{id}/details" => ["id"]
+	 * Extracts URL path parameters from a route string
+	 * @example '/user/{id}/details' => ['id']
 	 */
 	private extractUrlParams(route: string): string[] {
 		const matches = route.match(/\{(\w+)\}/g);
 		return matches ? matches.map(match => match.slice(1, -1)) : [];
 	}
 
+	/**
+	 * Gets a usable `Range` for the given route URL parameter
+	 *
+	 * @private
+	 * @param {Attribute} route
+	 * @param {string} param
+	 * @return {Range}
+	 * @memberof AnnotationLinkValidator
+	 */
 	private getRangeForUrlParam(route: Attribute, param: string): Range {
 		const paramIdx = route.value!.indexOf(`{${param}}`);
 		return new Range(
@@ -318,11 +317,32 @@ export class AnnotationLinkValidator {
 		);
 	}
 
+	/**
+	 * Gets a 'did you mean' suggestion based on the input and options
+	 * Intended to be directly appended to the end of diagnostic texts
+	 *
+	 * @private
+	 * @param {string} input
+	 * @param {string[]} options
+	 * @return {string}
+	 * @memberof AnnotationLinkValidator
+	 */
 	private getAppendedSuggestion(input: string, options: string[]): string {
 		const suggestion = didYouMean(input, options);
 		return suggestion ? `. Did you mean ${suggestion}?` : '';
 	}
 
+	/**
+	 * Gets a 'did you mean' suggestion based on the input and options whilst ignoring options that are already 'consumed'
+	 * Intended to be directly appended to the end of diagnostic texts
+	 *
+	 * @private
+	 * @param {string} input
+	 * @param {Iterable<string>} allOpts
+	 * @param {Iterable<string>} alreadyUsedOpts
+	 * @return {string}
+	 * @memberof AnnotationLinkValidator
+	 */
 	private getContextualAppendedSuggestion(input: string, allOpts: Iterable<string>, alreadyUsedOpts: Iterable<string>): string {
 		const opts = new Set(allOpts);
 		Array.from(alreadyUsedOpts).forEach((used) => opts.delete(used));

@@ -13,11 +13,6 @@ export enum DiagnosticCode {
 	MethodLevelTooManyOfAnnotation = 'method-too-many-of-annotation',
 	MethodLevelMissingRequiredAnnotation = 'method-missing-required-annotation',
 	MethodLevelAnnotationNotAllowed = 'method-annotation-not-allowed',
-	MethodLevelMissingParamAnnotation = 'method-missing-param-annotation',
-	MethodLevelConflictingSchemaEntityAnnotation = 'method-conflicting-schema-entity-annotation',
-	MethodLevelConflictingParamAnnotation = 'method-conflicting-param-annotation',
-	MethodLevelAnnotationMultipleLinks = 'method-annotation-multiple-links',
-	MethodLevelMultiplePathAnnotationForParam = 'method-annotation-multiple-path-for-same-url-param',
 
 	LinkerRouteMissingPath = 'linker-route-missing-path-reference',
 	LinkerUnreferencedParameter = 'linker-unreferenced-parameter',
