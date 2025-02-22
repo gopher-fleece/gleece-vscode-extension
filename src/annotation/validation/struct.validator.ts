@@ -18,7 +18,7 @@ export class StructValidator extends BaseValidator<GolangStruct> {
 		const counts = this._annotations.getAttributeCounts();
 
 		if (counts.Tag <= 0) {
-			const controller = (this._symbol as GolangStruct);
+			const controller = (this._symbol);
 			diagnostics.push(diagnosticWarning(
 				`Controller '${controller.symbol.name}' does not have a @Tag`,
 				this._annotations.range,

@@ -6,7 +6,9 @@ export interface ReceiverParameter extends TypeParam {
 	name: string;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface ReceiverReturnValue extends TypeParam {
+	// For future extension
 }
 
 export class GolangReceiver extends GolangSymbol {
@@ -92,7 +94,7 @@ export class GolangReceiver extends GolangSymbol {
 		const parameters: ReceiverParameter[] = [];
 
 		const sigIndex = rawDeclaration.indexOf(signatureString);
-		const paramRegex = /(?<name>[A-Za-z_][A-Za-z0-9_]*)\s+(?<typeName>[\w\.\*\[\]]+)/g;
+		const paramRegex = /(?<name>[A-Za-z_][A-Za-z0-9_]*)\s+(?<typeName>[\w.*[\]]+)/g;
 		let paramMatch: RegExpExecArray | null;
 
 		while ((paramMatch = paramRegex.exec(signatureString)) !== null) {
@@ -133,7 +135,7 @@ export class GolangReceiver extends GolangSymbol {
 
 		// Similarly, locate the return string in decl.
 		const retIndex = rawDeclaration.indexOf(returnTypesString);
-		const retRegex = /(?<typeName>[\w\.\*\[\]]+)/g;
+		const retRegex = /(?<typeName>[\w.*[\]]+)/g;
 		let retMatch: RegExpExecArray | null;
 		while ((retMatch = retRegex.exec(retTypesStr)) !== null) {
 			const typeName = retMatch.groups?.typeName;

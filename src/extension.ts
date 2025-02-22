@@ -1,62 +1,14 @@
 
-import {
-	CodeActionKind,
-	commands,
-	ExtensionContext,
-	languages,
-	window,
-	workspace
-} from 'vscode';
-import { GleeceProvider } from './gleece.completion.provider';
-import { GoLangId } from './common.constants';
-import { ResourceManager } from './resource.manager';
-import { GleeceCodeActionProvider } from './code-actions/code.action.provider';
-import { GleeceDiagnosticsListener } from './diagnostics/listener';
-
-export let resourceManager: ResourceManager;
-
-let completionAndHoverProvider: GleeceProvider;
-let gleeceCodeActionsProvider: GleeceCodeActionProvider;
-let diagnosticsListener: GleeceDiagnosticsListener;
+import { ExtensionContext, window } from 'vscode';
+import { gleeceContext } from './context/context';
+import { logger } from './logging/logger';
 
 export async function activate(context: ExtensionContext) {
-	resourceManager = new ResourceManager(context);
+	const start = Date.now();
+	logger.debug('Gleece Extension activating...');
 
-	// Using dynamic imports so we can ensure the resource manager has its context first
-	const { configManager } = (await import('./configuration/config.manager'));
-	await configManager.init();
-
-	completionAndHoverProvider = new GleeceProvider();
-	gleeceCodeActionsProvider = new GleeceCodeActionProvider();
-	diagnosticsListener = new GleeceDiagnosticsListener();
-
-	context.subscriptions.push(
-		languages.registerCompletionItemProvider(
-			GoLangId,
-			completionAndHoverProvider,
-			'@'
-		),
-		languages.registerHoverProvider(
-			{ scheme: 'file', language: GoLangId },
-			completionAndHoverProvider
-		),
-		languages.registerCodeActionsProvider(
-			{ scheme: 'file', language: GoLangId },
-			gleeceCodeActionsProvider,
-			{ providedCodeActionKinds: [CodeActionKind.QuickFix, CodeActionKind.SourceFixAll] }
-		),
-		workspace.onDidOpenTextDocument((document) => diagnosticsListener.fullDiagnostics(document)),
-		workspace.onDidChangeTextDocument((event) => diagnosticsListener.differentialDiagnostics(event)),
-		workspace.onDidCloseTextDocument((document) => diagnosticsListener.textDocumentClosed(document)),
-
-		commands.registerCommand('gleece.reAnalyzeFile', () => {
-			if (window.activeTextEditor) {
-				diagnosticsListener.fullDiagnostics(window.activeTextEditor.document);
-			} else {
-				window.showWarningMessage('Cannot re-analyze - no file is open');
-			}
-		}),
-	);
+	await gleeceContext.init(context);
+	context.subscriptions.push(gleeceContext);
 
 	// It would appear there might be a delay between when VS Code calls activate and the time
 	// the active text editor updates.
@@ -64,13 +16,19 @@ export async function activate(context: ExtensionContext) {
 	setTimeout(
 		() => {
 			if (window.activeTextEditor) {
-				diagnosticsListener.fullDiagnostics(window.activeTextEditor.document);
+				gleeceContext.diagnosticsProvider.onDemandFullDiagnostics(window.activeTextEditor.document)
+					.catch((err) => logger.error('Could not analyze file', err));
 			}
 		},
-		300
+		500
 	);
+
+	logger.debug(`Gleece Extension activated in ${Date.now() - start}ms`);
 }
 
 export function deactivate() {
-	diagnosticsListener?.deactivate();
+	logger.debug('Gleece Extension deactivating...');
+	const start = Date.now();
+	gleeceContext.dispose();
+	logger.debug(`Gleece Extension deactivated in ${Date.now() - start}ms`);
 }

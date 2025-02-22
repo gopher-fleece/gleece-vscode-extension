@@ -1,0 +1,242 @@
+{
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"type": "object",
+	"properties": {
+		"commonConfig": {
+			"description": "Common configuration settings required for Gleece",
+			"type": "object",
+			"properties": {
+				"controllerGlobs": {
+					"description": "List of paths where Gleece will search for controllers and types/structs. At least one path is required. Controllers/types outside these paths will be ignored or cause build errors",
+					"type": "array",
+					"items": {
+						"type": "string"
+					},
+					"minItems": 1
+				}
+			},
+			"required": [
+				"controllerGlobs"
+			]
+		},
+		"routesConfig": {
+			"description": "Configuration settings for route generation",
+			"type": "object",
+			"properties": {
+				"engine": {
+					"description": "The router engine to generate routes for. Available options: gin, echo, mux, chi, fiber",
+					"type": "string",
+					"enum": [
+						"gin",
+						"echo",
+						"mux",
+						"chi",
+						"fiber"
+					]
+				},
+				"packageName": {
+					"description": "Set the package name of the generated routes. Defaults to 'routes' if not specified",
+					"type": "string"
+				},
+				"outputPath": {
+					"description": "The path where the generated routes file will be saved",
+					"type": "string"
+				},
+				"outputFilePerms": {
+					"description": "Linux file permissions for the generated routes file",
+					"type": "string",
+					"pattern": "^[0-7]{4}$"
+				},
+				"authorizationConfig": {
+					"description": "Configuration for authorization enforcement on routes",
+					"type": "object",
+					"properties": {
+						"authFileFullPackageName": {
+							"description": "The package where the authorization function 'GleeceRequestAuthorization' is implemented",
+							"type": "string"
+						},
+						"enforceSecurityOnAllRoutes": {
+							"description": "Enforces that every route has at least one direct/inherited security annotation",
+							"type": "boolean"
+						}
+					},
+					"required": [
+						"authFileFullPackageName"
+					]
+				},
+				"templateExtensions": {
+					"description": "Extensions for route templates. Key is the extension name, value is the template file path",
+					"type": "object",
+					"additionalProperties": {
+						"type": "string"
+					}
+				},
+				"templateOverrides": {
+					"description": "Overrides for specific route templates. Key is the template name, value is the custom template file path",
+					"type": "object",
+					"additionalProperties": {
+						"type": "string"
+					}
+				}
+			},
+			"required": [
+				"engine",
+				"outputPath",
+				"authorizationConfig"
+			]
+		},
+		"openapiGeneratorConfig": {
+			"description": "Configuration settings for OpenAPI specification generation",
+			"type": "object",
+			"properties": {
+				"openapi": {
+					"description": "The OpenAPI specification version to generate. Available options: 3.0.0, 3.1.0",
+					"type": "string",
+					"enum": [
+						"3.0.0",
+						"3.1.0"
+					]
+				},
+				"info": {
+					"description": "Metadata to be included in the OpenAPI specification",
+					"type": "object",
+					"properties": {
+						"title": {
+							"description": "The title of the API",
+							"type": "string"
+						},
+						"description": {
+							"description": "A brief description of the API",
+							"type": "string"
+						},
+						"termsOfService": {
+							"description": "The URL of the terms of service",
+							"type": "string"
+						},
+						"contact": {
+							"description": "Contact information for API support",
+							"type": "object",
+							"properties": {
+								"name": {
+									"type": "string"
+								},
+								"url": {
+									"type": "string"
+								},
+								"email": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"email"
+							]
+						},
+						"license": {
+							"description": "License information for the API",
+							"type": "object",
+							"properties": {
+								"name": {
+									"type": "string"
+								},
+								"url": {
+									"type": "string"
+								}
+							},
+							"required": [
+								"url"
+							]
+						},
+						"version": {
+							"description": "The API version",
+							"type": "string"
+						}
+					},
+					"required": [
+						"title",
+						"version"
+					]
+				},
+				"baseUrl": {
+					"description": "The base URL of the API",
+					"type": "string"
+				},
+				"securitySchemes": {
+					"description": "Security schemes available in the API",
+					"type": "array",
+					"items": {
+						"type": "object",
+						"properties": {
+							"description": {
+								"type": "string"
+							},
+							"name": {
+								"type": "string"
+							},
+							"fieldName": {
+								"type": "string"
+							},
+							"type": {
+								"type": "string"
+							},
+							"in": {
+								"type": "string"
+							}
+						},
+						"required": [
+							"description",
+							"name",
+							"fieldName",
+							"type",
+							"in"
+						]
+					}
+				},
+				"defaultSecurity": {
+					"description": "Default security settings applied to routes without specific annotations",
+					"type": "object",
+					"properties": {
+						"name": {
+							"description": "The default security scheme name",
+							"type": "string"
+						},
+						"scopes": {
+							"description": "Collection of scopes to apply by default",
+							"type": "array",
+							"items": {
+								"type": "string"
+							}
+						}
+					},
+					"required": [
+						"name",
+						"scopes"
+					]
+				},
+				"specGeneratorConfig": {
+					"description": "Configuration for OpenAPI spec file generation",
+					"type": "object",
+					"properties": {
+						"outputPath": {
+							"description": "The path where the OpenAPI spec file will be generated",
+							"type": "string"
+						}
+					},
+					"required": [
+						"outputPath"
+					]
+				}
+			},
+			"required": [
+				"openapi",
+				"info",
+				"baseUrl",
+				"specGeneratorConfig"
+			]
+		}
+	},
+	"required": [
+		"commonConfig",
+		"routesConfig",
+		"openapiGeneratorConfig"
+	]
+}

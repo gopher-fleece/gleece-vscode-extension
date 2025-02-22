@@ -1,6 +1,6 @@
-import { Diagnostic, Position, Range } from 'vscode';
+import { Diagnostic, Range } from 'vscode';
 import { GolangSymbol } from '../../symbolic-analysis/golang.common';
-import { AnnotationProvider, Attribute } from '../annotation.provider';
+import { AnnotationProvider } from '../annotation.provider';
 import { DiagnosticCode } from '../../diagnostics/enums';
 import { diagnosticError } from '../../diagnostics/helpers';
 import { AttributeNames } from '../../enums';

@@ -1,6 +1,7 @@
 import { TextDocument, Position, Range } from 'vscode';
 import { AnnotationProvider, Attribute, CommentWithPosition } from './annotation.provider';
 import { GolangSymbol } from '../symbolic-analysis/golang.common';
+import { KnownJsonProperties } from '../enums';
 
 export function getAnnotationProvider(document: TextDocument, position: Position): AnnotationProvider {
 	// Extract comments relevant to the cursor (above and below), including their line positions
@@ -17,14 +18,14 @@ function getSurroundingComments(document: TextDocument, position: Position): Com
 	while (currentLine >= 0) {
 		const lineObject = document.lineAt(currentLine);
 		const trimmedStartText = lineObject.text.trimStart();
-		if (!trimmedStartText.startsWith("//")) {
+		if (!trimmedStartText.startsWith('//')) {
 			break; // Stop if we hit a non-comment line
 		}
 
 		comments.unshift({
 			text: trimmedStartText.trim(),
 			range: lineObject.range,
-			startIndex: lineObject.text.length - trimmedStartText.length,
+			startIndex: lineObject.text.length - trimmedStartText.length
 		});
 		currentLine--;
 	}
@@ -34,13 +35,13 @@ function getSurroundingComments(document: TextDocument, position: Position): Com
 	while (currentLine < totalLines) {
 		const lineObject = document.lineAt(currentLine);
 		const trimmedStartText = lineObject.text.trimStart();
-		if (!trimmedStartText.startsWith("//")) {
+		if (!trimmedStartText.startsWith('//')) {
 			break; // Stop if we hit a non-comment line
 		}
 		comments.push({
 			text: trimmedStartText.trim(),
 			range: lineObject.range,
-			startIndex: lineObject.text.length - trimmedStartText.length,
+			startIndex: lineObject.text.length - trimmedStartText.length
 		});
 		currentLine++;
 	}
@@ -81,7 +82,7 @@ export function getProviderForSymbol(document: TextDocument, symbol: GolangSymbo
 		comments.unshift({
 			text: trimmed,
 			range: line.range,
-			startIndex: line.firstNonWhitespaceCharacterIndex,
+			startIndex: line.firstNonWhitespaceCharacterIndex
 		});
 
 		currentLine--;
@@ -105,12 +106,12 @@ export function getProvidersForRange(document: TextDocument, startLine?: number,
 		const line = document.lineAt(i);
 		const trimmedText = line.text.trimStart();
 
-		if (trimmedText.startsWith("//")) {
+		if (trimmedText.startsWith('//')) {
 			// Collect comment line
 			comments.push({
 				text: trimmedText,
 				range: line.range,
-				startIndex: line.text.length - trimmedText.length, // Leading whitespace offset
+				startIndex: line.text.length - trimmedText.length // Leading whitespace offset
 			});
 		} else if (comments.length > 0) {
 			// If we hit a non-comment and had collected comments, create a provider
@@ -139,3 +140,21 @@ export function getAttributeRange(attribute: Attribute): Range {
 		endRange.end.character
 	);
 }
+
+/**
+ * Gets an attribute's Name **property**, if one exists, or its value, if it does not.
+ * The returned value (if defined) can serve as an alias. For example, given a @Path attribute,
+ * the alias will be the expected URL parameter name and **not** the function parameter name
+ *
+ * @export
+ * @param {Attribute} attribute
+ * @return {string}
+ */
+export function getAttributeAlias(attribute: Attribute): string | undefined {
+	return attribute.properties?.[KnownJsonProperties.Name] ?? attribute.value;
+}
+
+export function getAttributeValueRangeOrFullRange(attribute: Attribute): Range {
+	return attribute.valueRange ?? getAttributeRange(attribute);
+}
+

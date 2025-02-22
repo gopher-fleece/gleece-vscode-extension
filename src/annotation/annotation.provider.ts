@@ -1,16 +1,18 @@
-import json5 from "json5";
+import json5 from 'json5';
 import { AttributeNames, KnownJsonProperties } from '../enums';
 import { Diagnostic, Position, Range } from 'vscode';
 import { Validators } from '../semantics/validators';
-import { diagnosticError, diagnosticWarning } from '../diagnostics/helpers';
-import { DiagnosticCode } from '../diagnostics/enums';
 import { GolangSymbol, GolangSymbolType } from '../symbolic-analysis/golang.common';
 import { GolangStruct } from '../symbolic-analysis/gonlang.struct';
 import { ReceiverValidator } from './validation/receiver.validator';
 import { GolangReceiver } from '../symbolic-analysis/golang.receiver';
 import { StructValidator } from './validation/struct.validator';
-import { combineRanges } from '../utils/range.utils';
-import { getAttributeRange } from './annotation.functional';
+
+interface ParsedComment {
+	attribute: Attribute | null;
+	isAttribute: boolean;
+	error: Error | null;
+}
 
 interface GroupWithIndex {
 	match: string;
@@ -67,7 +69,7 @@ export class AnnotationProvider {
 
 	public constructor(comments: CommentWithPosition[], associatedSymbol?: GolangSymbol) {
 		if (comments.length <= 0) {
-			throw new Error("AttributeProvider called with no comments");
+			throw new Error('AttributeProvider called with no comments');
 		}
 
 		this._symbol = associatedSymbol;
@@ -78,7 +80,7 @@ export class AnnotationProvider {
 		const lastComment = comments[comments.length - 1];
 		this._range = new Range(
 			new Position(firstComment.range.start.line, 0),
-			new Position(lastComment.range.end.line, lastComment.text.length),
+			new Position(lastComment.range.end.line, lastComment.text.length)
 		);
 	}
 
@@ -92,14 +94,14 @@ export class AnnotationProvider {
 			new Position(
 				this._range.end.line + offsetLines,
 				this._range.end.character - this._range.start.character
-			),
+			)
 		);
 
 		// Adjust each diagnostic to its new range
 		for (const diagnostic of this.lastValidationResult) {
 			diagnostic.range = diagnostic.range.with(
 				new Position(diagnostic.range.start.line + offsetLines, diagnostic.range.start.character),
-				new Position(diagnostic.range.end.line + offsetLines, diagnostic.range.end.character),
+				new Position(diagnostic.range.end.line + offsetLines, diagnostic.range.end.character)
 			);
 		}
 	}
@@ -122,6 +124,11 @@ export class AnnotationProvider {
 
 	public getAttributeNames(): string[] {
 		return this._attributes.map((attr) => attr.name);
+	}
+
+	public getSecurities(): Attribute[] {
+		const secAttrNames: string[] = [AttributeNames.Security, AttributeNames.AdvancedSecurity];
+		return this._attributes.filter((attr) => secAttrNames.includes(attr.name)) ?? [];
 	}
 
 	// Public method to get non-attribute comments (indexed by line number)
@@ -188,6 +195,7 @@ export class AnnotationProvider {
 			Description: 0,
 			Method: 0,
 			ErrorResponse: 0,
+			TemplateContext: 0
 		};
 
 		for (const attrib of this._attributes) {
@@ -196,6 +204,12 @@ export class AnnotationProvider {
 
 		this._attributeCounts = counts;
 		return counts;
+	}
+
+	public getAttributesByName(name: AttributeNames): Attribute[] {
+		// Intentional - preferring to keep the name field a plain 'string'
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison
+		return this._attributes.filter((attr) => attr.name === name);
 	}
 
 	public getDiagnostics(withCache?: boolean): Diagnostic[] {
@@ -268,7 +282,7 @@ export class AnnotationProvider {
 			} else {
 				// Trim `//` and any extra spaces
 				this._nonAttributeComments.push({
-					text: comment.text.replace(/^\/\/\s*/, ""),
+					text: comment.text.replace(/^\/\/\s*/, ''),
 					range: comment.range
 				});
 			}
@@ -276,7 +290,7 @@ export class AnnotationProvider {
 	}
 
 	// Private helper to parse each individual comment
-	private parseComment(parsingRegex: RegExp, comment: CommentWithPosition): { attribute: Attribute | null; isAttribute: boolean; error: Error | null } {
+	private parseComment(parsingRegex: RegExp, comment: CommentWithPosition): ParsedComment {
 		const matches = parsingRegex.exec(comment.text);
 
 		if (!matches) {
@@ -311,7 +325,7 @@ export class AnnotationProvider {
 			propertiesRange: propertiesGroup ? new Range(lineNumber, propertiesGroup.start, lineNumber, propertiesGroup.end) : undefined,
 			propertiesParseError: jsonError,
 			description: descriptionGroup?.match,
-			descriptionRange: descriptionGroup ? new Range(lineNumber, descriptionGroup.start, lineNumber, descriptionGroup.end) : undefined,
+			descriptionRange: descriptionGroup ? new Range(lineNumber, descriptionGroup.start, lineNumber, descriptionGroup.end) : undefined
 		};
 
 		return { attribute, isAttribute: true, error: null };
