@@ -20,7 +20,8 @@ export enum AttributeNames {
 	Response = 'Response',
 	Description = 'Description',
 	Method = 'Method',
-	ErrorResponse = 'ErrorResponse'
+	ErrorResponse = 'ErrorResponse',
+	TemplateContext = 'TemplateContext'
 }
 
 export const KnownJsonPropertiesCompletionObjects: CompletionItem[] = [
@@ -43,7 +44,8 @@ export const AttributeNamesCompletionObjects: CompletionItem[] = [
 	new CompletionItem({ label: AttributeNames.Response, detail: '', description: 'Success Response' }),
 	new CompletionItem({ label: AttributeNames.Description, detail: '', description: 'Description' }),
 	new CompletionItem({ label: AttributeNames.Method, detail: '', description: 'HTTP Method' }),
-	new CompletionItem({ label: AttributeNames.ErrorResponse, detail: '', description: 'Error Response' })
+	new CompletionItem({ label: AttributeNames.ErrorResponse, detail: '', description: 'Error Response' }),
+	new CompletionItem({ label: AttributeNames.TemplateContext, detail: '', description: 'Additional Template Context' })
 ];
 
 /**
@@ -79,6 +81,7 @@ export const AttributeDescriptions: { [Key in AttributeNames]: string } = {
 	[AttributeNames.Response]: 'The expected response upon success',
 	[AttributeNames.Description]: "The operation's description",
 	[AttributeNames.Method]: 'The HTTP method to be used for the operation',
-	[AttributeNames.ErrorResponse]: 'An expected error response upon failure'
+	[AttributeNames.ErrorResponse]: 'An expected error response upon failure',
+	[AttributeNames.TemplateContext]: 'Additional context to be injected into the routes template at build time'
 };
 

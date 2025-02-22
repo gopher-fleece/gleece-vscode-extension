@@ -1,22 +1,22 @@
-// KnownTemplate enum
-export enum KnownTemplate {
-	ROUTES = 'routes',
-	CONTROLLER_RESPONSE_PARTIAL = 'controller.response.partial'
-}
-
-// RoutingEngineType enum
 export enum RoutingEngineType {
-	GIN = 'gin'
+	GIN = 'gin',
+	Echo = 'echo',
+	Mux = 'mux',
+	Fiber = 'fiber',
+	Chi = 'chi'
 }
 
-// SecuritySchemeType enum
 export enum SecuritySchemeType {
-	// Add possible values here based on the Go definition
+	ApiKey = 'apiKey',
+	OAuth2 = 'oauth2',
+	OpenIdConnect = 'openIdConnect',
+	Http = 'http'
 }
 
-// SecuritySchemeIn enum
 export enum SecuritySchemeIn {
-	// Add possible values here based on the Go definition
+	Query = 'query',
+	Header = 'header',
+	Cookie = 'cookie'
 }
 
 // SpecGeneratorConfig interface
@@ -75,7 +75,7 @@ export interface CustomValidators {
 // RoutesConfig interface
 export interface RoutesConfig {
 	engine: RoutingEngineType; // Required, one of "gin"
-	templateOverrides: Record<KnownTemplate, string>;
+	templateOverrides: Record<string, string>;
 	outputPath: string; // Required, must be a valid file path
 	outputFilePerms?: string; // Optional, must match regex ^(0?[0-7]{3})?$
 	packageName?: string; // Optional

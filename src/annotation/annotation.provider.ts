@@ -194,7 +194,8 @@ export class AnnotationProvider {
 			Response: 0,
 			Description: 0,
 			Method: 0,
-			ErrorResponse: 0
+			ErrorResponse: 0,
+			TemplateContext: 0
 		};
 
 		for (const attrib of this._attributes) {

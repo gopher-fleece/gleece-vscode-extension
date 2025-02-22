@@ -31,12 +31,19 @@ type ExtensionConfigValueChangedEventHandler<
 	e: ExtensionConfigValueChangedEvent<TKey>
 ) => any;
 
+export interface GleeceConfigPathChangedEvent {
+	previousValue?: string;
+	newValue?: string;
+}
+
 export class ConfigManager implements Disposable {
 	private _extensionConfig?: WorkspaceConfiguration;
 
 	private _gleeceConfig?: GleeceConfig;
+	private _gleeceConfigPath?: string;
 	private _gleeceConfigChanged: TypedEvent<ConfigManager, GleeceConfigValueChangedEvent> = new TypedEvent();
 	private _gleeceConfigWatcher?: FileSystemWatcher;
+	private _gleeceConfigPathChanged: TypedEvent<ConfigManager, GleeceConfigPathChangedEvent> = new TypedEvent();
 
 	private _securitySchemaNames?: string[];
 
@@ -46,6 +53,14 @@ export class ConfigManager implements Disposable {
 
 	public get gleeceConfig(): GleeceConfig | undefined {
 		return this._gleeceConfig;
+	}
+
+	public get gleeceConfigPath(): string | undefined {
+		return this._gleeceConfigPath;
+	}
+
+	public get gleeceConfigPathChanged(): ITypedEvent<ConfigManager, GleeceConfigPathChangedEvent> {
+		return this._gleeceConfigPathChanged;
 	}
 
 	public get gleeceConfigChanged(): ITypedEvent<ConfigManager, GleeceConfigValueChangedEvent> {
@@ -76,6 +91,13 @@ export class ConfigManager implements Disposable {
 		return this._extensionConfig?.get<PathValue<GleeceExtensionConfig, TKey>>(key);
 	}
 
+	public setExtensionConfigValue<TKey extends Paths<GleeceExtensionConfig>>(
+		key: TKey,
+		value: PathValue<GleeceExtensionConfig, TKey> | undefined
+	): void {
+		this._extensionConfig?.update(key, value);
+	}
+
 	public registerConfigListener<TKey extends Paths<GleeceExtensionConfig>>(
 		configKey: TKey,
 		handler: ExtensionConfigValueChangedEventHandler<TKey>
@@ -104,6 +126,7 @@ export class ConfigManager implements Disposable {
 		// First, if the change affects our root, re-fetch the entire configuration
 		const oldConfig = this._extensionConfig;
 		if (event.affectsConfiguration('gleece')) {
+			// Force a reload of the configuration
 			this._extensionConfig = workspace.getConfiguration(ExtensionRootNamespace);
 			logger.debug('Extension config has been updated');
 		} else {
@@ -112,9 +135,18 @@ export class ConfigManager implements Disposable {
 		}
 
 		// Then, if it affects the gleece.config path, we need to re-load the file and re-initialize the watcher
-		if (event.affectsConfiguration('gleece.config.path')) {
+		const pathKey = 'config.path';
+		if (event.affectsConfiguration(`gleece.${pathKey}`)) {
 			await this.loadGleeceConfig();
 			this.initGleeceConfigWatcher();
+			const previousValue: string | undefined = oldConfig?.get(pathKey);
+			this._gleeceConfigPathChanged.invokeAsync(
+				this,
+				{
+					previousValue,
+					newValue: this.getExtensionConfigValue('config.path')
+				}
+			).catch((err) => logger.error('Caught an error whilst dispatching configuration path changed event', err));
 		}
 
 		// Then we notify the generic event listeners
@@ -155,6 +187,7 @@ export class ConfigManager implements Disposable {
 			return;
 		}
 		try {
+			this._gleeceConfigPath = this.resolvePathFromWorkspace(configPath);
 			const oldConfig = this._gleeceConfig;
 			this._gleeceConfig = JSON.parse(data);
 			const configChanged = !isDeepStrictEqual(oldConfig, this._gleeceConfig);
@@ -169,7 +202,7 @@ export class ConfigManager implements Disposable {
 			}
 			this._securitySchemaNames = undefined;
 		} catch (error) {
-			logger.errorPopup(`Could not parse Gleece configuration file at '${configPath}' -  ${(error as any)?.message}`);
+			logger.warn(`Could not parse Gleece configuration file at '${configPath}' -  ${(error as any)?.message}`);
 		}
 	}
 

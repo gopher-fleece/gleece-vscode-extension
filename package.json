@@ -10,7 +10,9 @@
 	},
 	"contributors": [
 		{
-			"name": "Yuval Pomerchik"
+			"name": "Yuval Pomerchik",
+			"url": "https://github.com/yuval-po",
+			"email": "yuval.pomer@protonmail.com"
 		}
 	],
 	"icon": "resources/logo.jpg",
@@ -77,6 +79,7 @@
 		"json5": "^2.2.3",
 		"lodash.debounce": "^4.0.8",
 		"simple-git": "^3.22.0",
+		"uuid": "^11.1.0",
 		"weak-event": "^2.0.5"
 	},
 	"contributes": {
@@ -135,6 +138,14 @@
 				"command": "gleece.reAnalyzeFile",
 				"title": "Gleece: Re-analyze current file",
 				"when": "editorLangId == go"
+			}
+		],
+		"jsonValidation": [
+			{
+				"fileMatch": [
+					"**/gleece.config.json"
+				],
+				"url": "./resources/schema/gleece.config.schema.json"
 			}
 		]
 	},

@@ -77,5 +77,6 @@ export const KNOWN_PROPERTIES: { [Key in AttributeNames]: PropertyValidationConf
 	[AttributeNames.Response]: [],
 	[AttributeNames.Description]: [],
 	[AttributeNames.Method]: [],
-	[AttributeNames.ErrorResponse]: []
+	[AttributeNames.ErrorResponse]: [],
+	[AttributeNames.TemplateContext]: []
 };

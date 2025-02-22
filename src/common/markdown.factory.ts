@@ -1,9 +1,16 @@
 import { MarkdownString } from 'vscode';
 
+export enum TextOverflow {
+	Clip = 'clip',
+	Ellipsis = 'ellipsis',
+	String = 'string'
+}
+
 export interface MarkdownColumn {
 	label: string;
 	values: string[];
 	maxWidth?: number;
+	textOverflow?: TextOverflow;
 }
 
 /**
@@ -67,7 +74,8 @@ export function createMarkdownTable(columns: MarkdownColumn[], markdownToAppendT
 		let rowStr = '│ ';
 		for (let colIdx = 0; colIdx < columns.length; colIdx++) {
 			const value = columns[colIdx].values[rowIdx] ?? '';
-			rowStr += value.padEnd(columnWidths[colIdx]);
+			const valueWithOverflowBehavior = withOverflow(value, columnWidths[colIdx], columns[colIdx].textOverflow);
+			rowStr += valueWithOverflowBehavior.padEnd(columnWidths[colIdx]);
 			if (colIdx + 1 < columns.length) {
 				rowStr += ' │ ';
 			} else {
@@ -82,4 +90,26 @@ export function createMarkdownTable(columns: MarkdownColumn[], markdownToAppendT
 	markdown.appendMarkdown('```\n');
 
 	return markdown;
+}
+
+function withOverflow(text: string, maxLength: number, overflow?: TextOverflow): string {
+	if (text.length < maxLength) {
+		return text;
+	}
+
+	const quoteType = text[0] === text[text.length - 1] ? text[0] : undefined;
+
+	switch (overflow) {
+		case TextOverflow.Clip:
+			return quoteType
+				? text.slice(0, maxLength - 1) + quoteType
+				: text.slice(0, maxLength);
+		case TextOverflow.String:
+			return text;
+		case TextOverflow.Ellipsis:
+		default:
+			return quoteType
+				? text.slice(0, maxLength - 4) + `${quoteType}...`
+				: text.slice(0, maxLength - 3) + '...';
+	}
 }

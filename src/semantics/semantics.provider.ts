@@ -1,7 +1,7 @@
 import { TextDocument } from 'vscode';
 import { GolangSymbolicAnalyzer } from '../symbolic-analysis/symbolic.analyzer';
 
-class SemanticProvider {
+class SymbolicProvider {
 	private _symbolicAnalyzersMap: Map<string, GolangSymbolicAnalyzer> = new Map();
 	private _symbolicAnalyzersArray: string[] = [];
 
@@ -27,4 +27,4 @@ class SemanticProvider {
 	}
 }
 
-export const semanticProvider = new SemanticProvider();
+export const semanticProvider = new SymbolicProvider();

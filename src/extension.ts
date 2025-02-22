@@ -16,7 +16,7 @@ export async function activate(context: ExtensionContext) {
 	setTimeout(
 		() => {
 			if (window.activeTextEditor) {
-				gleeceContext.diagnosticsListener.onDemandFullDiagnostics(window.activeTextEditor.document)
+				gleeceContext.diagnosticsProvider.onDemandFullDiagnostics(window.activeTextEditor.document)
 					.catch((err) => logger.error('Could not analyze file', err));
 			}
 		},

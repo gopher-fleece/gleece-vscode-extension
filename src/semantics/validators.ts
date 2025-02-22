@@ -206,5 +206,6 @@ export const Validators: { [Key in AttributeNames]: (attribute: Attribute) => Di
 	[AttributeNames.Tag]: validateTag,
 	[AttributeNames.Description]: validateSimpleAnnotation,
 	[AttributeNames.Hidden]: validateHidden,
-	[AttributeNames.Deprecated]: validateSimpleAnnotation
+	[AttributeNames.Deprecated]: validateSimpleAnnotation,
+	[AttributeNames.TemplateContext]: () => [] // No validation
 };
