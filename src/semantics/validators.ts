@@ -201,6 +201,7 @@ export const Validators: { [Key in AttributeNames]: (attribute: Attribute) => Di
 	[AttributeNames.Path]: validateSimpleParam,
 	[AttributeNames.Query]: validateSimpleParam,
 	[AttributeNames.Body]: validateBody,
+	[AttributeNames.FormField]: validateSimpleParam,
 	[AttributeNames.Security]: validateSecurity,
 	[AttributeNames.AdvancedSecurity]: validateSecurity,
 	[AttributeNames.Tag]: validateTag,

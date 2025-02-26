@@ -11,6 +11,7 @@ export enum AttributeNames {
 	Query = 'Query',
 	Path = 'Path',
 	Body = 'Body',
+	FormField = 'FormField',
 	Header = 'Header',
 	Deprecated = 'Deprecated',
 	Hidden = 'Hidden',
@@ -35,6 +36,7 @@ export const AttributeNamesCompletionObjects: CompletionItem[] = [
 	new CompletionItem({ label: AttributeNames.Query, detail: '', description: 'Query Parameter' }),
 	new CompletionItem({ label: AttributeNames.Path, detail: '', description: 'Path Parameter' }),
 	new CompletionItem({ label: AttributeNames.Body, detail: '', description: 'Body Parameter' }),
+	new CompletionItem({ label: AttributeNames.FormField, detail: '', description: 'From Field Parameter' }),
 	new CompletionItem({ label: AttributeNames.Header, detail: '', description: 'Header Parameter' }),
 	new CompletionItem({ label: AttributeNames.Deprecated, detail: '', description: 'Deprecated Operation' }),
 	new CompletionItem({ label: AttributeNames.Hidden, detail: '', description: 'Hidden Operation' }),
@@ -60,6 +62,7 @@ export const AttributeNamesCompletionObjects: CompletionItem[] = [
  */
 export const RepeatableAttributes: { [Key in AttributeNames]?: boolean } = {
 	[AttributeNames.Query]: true,
+	[AttributeNames.FormField]: true,
 	[AttributeNames.Path]: true,
 	[AttributeNames.Header]: true,
 	[AttributeNames.Security]: true,
@@ -72,6 +75,7 @@ export const AttributeDescriptions: { [Key in AttributeNames]: string } = {
 	[AttributeNames.Query]: 'A Query parameter',
 	[AttributeNames.Path]: 'A path (URL) parameter',
 	[AttributeNames.Body]: 'A body parameter',
+	[AttributeNames.FormField]: 'A field in a urlencoded body',
 	[AttributeNames.Header]: 'A header parameter',
 	[AttributeNames.Deprecated]: "When placed on an operation, marks it as 'Deprecated'.\n\nMay be inherited from the controller",
 	[AttributeNames.Hidden]: 'Prevents the generation of OpenAPI documentation for the operation',

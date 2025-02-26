@@ -107,6 +107,7 @@ export class AnnotationLinkValidator {
 				case AttributeNames.Query:
 				case AttributeNames.Header:
 				case AttributeNames.Body:
+				case AttributeNames.FormField:
 					nonPathAttributes.set(attr.value!, attr);
 					break;
 			}

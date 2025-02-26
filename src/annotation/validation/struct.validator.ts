@@ -35,6 +35,12 @@ export class StructValidator extends BaseValidator<GolangStruct> {
 		if (counts.Body > 0) {
 			diagnostics.push(this.createMayNotHaveAnnotation('Controllers', AttributeNames.Body, this._annotations.range));
 		}
+		if (counts.FormField > 0) {
+			diagnostics.push(this.createMayNotHaveAnnotation('Controllers', AttributeNames.FormField, this._annotations.range));
+		}
+		if (counts.Header > 0) {
+			diagnostics.push(this.createMayNotHaveAnnotation('Controllers', AttributeNames.Header, this._annotations.range));
+		}
 		if (counts.Method > 0) {
 			diagnostics.push(this.createMayNotHaveAnnotation('Controllers', AttributeNames.Method, this._annotations.range));
 		}
