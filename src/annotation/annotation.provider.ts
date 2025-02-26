@@ -185,6 +185,7 @@ export class AnnotationProvider {
 			Query: 0,
 			Path: 0,
 			Body: 0,
+			FormField: 0,
 			Header: 0,
 			Deprecated: 0,
 			Hidden: 0,
