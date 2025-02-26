@@ -68,6 +68,7 @@ export const KNOWN_PROPERTIES: { [Key in AttributeNames]: PropertyValidationConf
 	[AttributeNames.Query]: STD_NAME_AND_VALIDATION_CONFIG,
 	[AttributeNames.Path]: STD_NAME_AND_VALIDATION_CONFIG,
 	[AttributeNames.Body]: STD_VALIDATION_CONFIG,
+	[AttributeNames.FormField]: STD_NAME_AND_VALIDATION_CONFIG,
 	[AttributeNames.Header]: STD_NAME_AND_VALIDATION_CONFIG,
 	[AttributeNames.Deprecated]: [],
 	[AttributeNames.Hidden]: [],
