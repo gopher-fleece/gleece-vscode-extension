@@ -1,6 +1,7 @@
 import { inspect } from 'util';
 import { TextDocument, DocumentSymbol, Range } from 'vscode';
 import { TypeParam, GolangSymbol, GolangSymbolType } from './golang.common';
+import { GolangSymbolicAnalyzer } from './symbolic.analyzer';
 
 export interface ReceiverParameter extends TypeParam {
 	name: string;
@@ -22,8 +23,18 @@ export class GolangReceiver extends GolangSymbol {
 		return GolangSymbolType.Receiver;
 	}
 
-	public constructor(document: TextDocument, symbol: DocumentSymbol) {
-		super(symbol);
+	public get isApiEndpoint(): boolean {
+		// O(1) lookup
+		const owner = this.analyzer.getStructByName(this.ownerStructName);
+		return owner?.isController === true;
+	}
+
+	public constructor(
+		analyzer: GolangSymbolicAnalyzer,
+		document: TextDocument,
+		symbol: DocumentSymbol
+	) {
+		super(analyzer, symbol);
 
 		const match = symbol.name.match(/^\((?<isByRef>\*)?(?<typeName>\w+)\)\.(?<methodName>.+)/);
 		const name = match?.groups?.['methodName'];

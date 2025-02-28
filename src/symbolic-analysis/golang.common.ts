@@ -1,4 +1,5 @@
 import { Range, DocumentSymbol } from 'vscode';
+import { GolangSymbolicAnalyzer } from './symbolic.analyzer';
 
 export enum GolangSymbolType {
 	Struct,
@@ -12,7 +13,10 @@ export abstract class GolangSymbol {
 		return this.symbol.range;
 	}
 
-	public constructor(public readonly symbol: DocumentSymbol) { }
+	public constructor(
+		public readonly analyzer: GolangSymbolicAnalyzer,
+		public readonly symbol: DocumentSymbol
+	) { }
 }
 
 export interface TypeParam {
