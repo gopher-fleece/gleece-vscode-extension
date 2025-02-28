@@ -262,7 +262,14 @@ export class AnnotationProvider {
 	}
 
 	private validateReceiver(): Diagnostic[] {
-		const validator = new ReceiverValidator(this._symbol as GolangReceiver, this);
+		const receiver = this._symbol as GolangReceiver;
+		if (!receiver.isApiEndpoint) {
+			// Receiver is not an API endpoint - we can ignore it.
+			// Note that this affects only contextual/semantic validation
+			return [];
+		}
+
+		const validator = new ReceiverValidator(receiver, this);
 		return validator.validate();
 	}
 
