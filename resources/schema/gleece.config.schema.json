@@ -77,6 +77,10 @@
 					"additionalProperties": {
 						"type": "string"
 					}
+				},
+				"validateResponsePayload" : {
+					"description": "Verify response payload for routes with a response payload before sending the response",
+					"type": "boolean"
 				}
 			},
 			"required": [
