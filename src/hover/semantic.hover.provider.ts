@@ -145,6 +145,11 @@ export class SemanticHoverProvider implements HoverProvider {
 		const parentController = analyzer.getStructByName(receiver.ownerStructName);
 		const markdown = new MarkdownString(`**${receiver.name}** (*${parentController?.symbol.name ?? 'N/A'}*)\n\n`);
 
+		const description = annotations.getDescription();
+		if (description) {
+			markdown.appendMarkdown(`\n${description}\n\n`);
+		}
+
 		const method = annotations.getAttribute(AttributeNames.Method)?.value ?? 'N/A';
 		const route = annotations.getAttribute(AttributeNames.Route)?.value ?? 'N/A';
 
@@ -190,7 +195,13 @@ export class SemanticHoverProvider implements HoverProvider {
 			}
 		}
 
-		const defaultSecurity = gleeceContext.configManager.gleeceConfig?.openAPIGeneratorConfig.defaultSecurity;
+		const gleeceConfig = gleeceContext.configManager.gleeceConfig;
+		if (!gleeceConfig) {
+			markdown.appendMarkdown('- Security - **Unknown (Gleece Config not found)**');
+			return;
+		}
+
+		const defaultSecurity = gleeceConfig?.openAPIGeneratorConfig?.defaultSecurity;
 		if (defaultSecurity) {
 			markdown.appendMarkdown('- Security - Default\n');
 			markdown.appendMarkdown(`	- *${defaultSecurity.name}* : ${defaultSecurity.scopes.map((s) => `*${s}*`).join(', ')}\n`);

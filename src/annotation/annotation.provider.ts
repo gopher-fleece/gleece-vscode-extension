@@ -213,6 +213,35 @@ export class AnnotationProvider {
 		return this._attributes.filter((attr) => attr.name === name);
 	}
 
+	public getDescription(): string {
+		const attr = this.getAttribute(AttributeNames.Description);
+		if (attr) {
+			return attr.description ?? ''; // If there's a description annotation use that, even if it's empty
+		}
+
+		const freeComments: string[] = [];
+		let lastFreeCommentIndex = -1;
+
+		for (const comment of this._nonAttributeComments) {
+			if (comment.range.start.line > lastFreeCommentIndex + 1) {
+				break;
+			}
+			freeComments.push(comment.text);
+			lastFreeCommentIndex++;
+		}
+
+		let takeUntil = freeComments.length;
+		for (let i = freeComments.length; i > 0; i--) {
+			if (freeComments[i - 1] !== '') {
+				break;
+			}
+			takeUntil--;
+		}
+
+		return freeComments.slice(0, takeUntil).join('\n');
+	}
+
+
 	public getDiagnostics(withCache?: boolean): Diagnostic[] {
 		if (withCache && this._lastValidationResult !== undefined) {
 			return this._lastValidationResult;

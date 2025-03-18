@@ -81,6 +81,7 @@ export interface RoutesConfig {
 	packageName?: string; // Optional
 	customValidators?: CustomValidators[]; // Optional
 	authorizationConfig: AuthorizationConfig; // Required
+	validateResponsePayload?: boolean;
 }
 
 // AuthorizationConfig interface
