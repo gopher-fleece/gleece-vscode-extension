@@ -78,7 +78,7 @@
 						"type": "string"
 					}
 				},
-				"validateResponsePayload" : {
+				"validateResponsePayload": {
 					"description": "Verify response payload for routes with a response payload before sending the response",
 					"type": "boolean"
 				}
@@ -236,6 +236,18 @@
 				"baseUrl",
 				"specGeneratorConfig"
 			]
+		},
+		"experimentalConfig": {
+			"validateTopLevelOnlyEnum": {
+				"description": "Validate enums at the top level, e.g. enum of primitive types enums of http params as query, header etc only, this will NOT validate enums in body's structs",
+				"type": "boolean",
+				"default": false
+			},
+			"generateEnumValidator": {
+				"description": "Generate enum validator functions for each enum used in the routes APIs",
+				"type": "boolean",
+				"default": false
+			}
 		}
 	},
 	"required": [

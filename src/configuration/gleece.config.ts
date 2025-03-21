@@ -112,9 +112,16 @@ export interface SecurityAnnotationComponent {
 	scopes: string[];
 }
 
+// Experimental configurations - be careful with using it, it may be unstable and change in future versions
+export interface ExperimentalConfig {
+	validateTopLevelOnlyEnum: boolean;
+	generateEnumValidator: boolean;
+}
+
 // GleeceConfig interface
 export interface GleeceConfig {
 	openAPIGeneratorConfig: OpenAPIGeneratorConfig; // Required
 	routesConfig: RoutesConfig; // Required
 	commonConfig: CommonConfig; // Required
+	experimentalConfig?: ExperimentalConfig;
 }
