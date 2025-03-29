@@ -18,6 +18,7 @@ import { ConfigManager, ExtensionConfigValueChangedEvent } from '../configuratio
 import { logger } from '../logging/logger';
 import { SimpleHoverProvider } from '../hover/simple.hover.provider';
 import { GoLangId } from '../common.constants';
+import { GleeceViewProvider } from '../renderer/view.models/view.provider';
 
 /**
  * The main context for the extension
@@ -41,6 +42,8 @@ class GleeceContext implements Disposable {
 	private _hoverProvider!: HoverProvider;
 
 	private _completionProvider!: CompletionItemProvider;
+
+	private _viewProvider!: GleeceViewProvider;
 
 	/**
 	 * Tracks disposables and ensures resource cleanup.
@@ -137,6 +140,8 @@ class GleeceContext implements Disposable {
 		this.registerStandardProviders();
 		this.registerEvents();
 		this.registerCommands();
+
+		this._viewProvider = new GleeceViewProvider(context, this._resourceManager);
 	}
 
 	/**

@@ -15,7 +15,7 @@ const extensionConfig = {
 	entry: './src/extension.ts', // the entry point of this extension, 📖 -> https://webpack.js.org/configuration/entry-context/
 	output: {
 		// the bundle is stored in the 'dist' folder (check package.json), 📖 -> https://webpack.js.org/configuration/output/
-		path: path.resolve(__dirname, 'dist'),
+		path: path.resolve(__dirname, '..', 'dist'),
 		filename: 'extension.js',
 		libraryTarget: 'commonjs2'
 	},
@@ -25,19 +25,24 @@ const extensionConfig = {
 	},
 	resolve: {
 		// support reading TypeScript and JavaScript files, 📖 -> https://github.com/TypeStrong/ts-loader
-		extensions: ['.ts', '.js']
+		extensions: ['.ts', '.js', '.tsx', '.jsx']
 	},
 	module: {
 		rules: [
 			{
-				test: /\.ts$/,
+				test: /\.tsx?$/,
 				exclude: /node_modules/,
 				use: [
 					{
 						loader: 'ts-loader'
 					}
 				]
-			}
+			},
+			{
+				test: /\.jsx?$/,
+				use: 'babel-loader',
+				exclude: /node_modules/,
+			},
 		]
 	},
 	devtool: 'nosources-source-map',
