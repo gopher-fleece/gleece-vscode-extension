@@ -18,7 +18,7 @@ import { ConfigManager, ExtensionConfigValueChangedEvent } from '../configuratio
 import { logger } from '../logging/logger';
 import { SimpleHoverProvider } from '../hover/simple.hover.provider';
 import { GoLangId } from '../common.constants';
-import { GleeceViewProvider } from '../renderer/view.models/view.provider';
+import { GleeceViewProvider } from '../renderer/view.models/infrastructure/view.provider';
 
 /**
  * The main context for the extension

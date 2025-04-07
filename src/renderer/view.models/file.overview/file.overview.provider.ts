@@ -1,4 +1,4 @@
-import { ReactWebViewProvider } from '../base.view.provider';
+import { ReactWebViewProvider } from '../infrastructure/react.webview.provider';
 
 export class FileOverviewProvider extends ReactWebViewProvider {
 	public readonly id: string = 'fileOverview';

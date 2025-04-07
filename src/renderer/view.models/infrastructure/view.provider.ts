@@ -1,8 +1,8 @@
 import { ExtensionContext } from 'vscode';
-import { FileOverviewProvider } from './file.overview/file.overview.provider';
-import { ReactWebViewProvider } from './base.view.provider';
-import { ResourceManager } from '../../resource.manager';
-import { logger } from '../../logging/logger';
+import { FileOverviewProvider } from '../file.overview/file.overview.provider';
+import { ReactWebViewProvider } from './react.webview.provider';
+import { ResourceManager } from '../../../resource.manager';
+import { logger } from '../../../logging/logger';
 import { inspect } from 'util';
 
 export class GleeceViewProvider {

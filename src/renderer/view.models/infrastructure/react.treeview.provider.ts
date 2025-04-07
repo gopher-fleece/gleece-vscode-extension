@@ -1,40 +1,24 @@
 import {
 	Disposable,
-	ExtensionContext,
+	TreeDataProvider,
 	Uri,
 	ViewColumn,
 	Webview,
 	WebviewPanel,
 	WebviewView,
-	WebviewViewProvider,
 	window
 } from 'vscode';
-import { ResourceManager } from '../../resource.manager';
-import path from 'path';
-import fse from 'fs-extra';
+import { ReactAppProvider } from './react.app.provider';
 
-export abstract class ReactWebViewProvider implements WebviewViewProvider, Disposable {
+export abstract class ReactTreeViewProvider extends ReactAppProvider implements TreeDataProvider {
 
 	private _viewRegistration?: Disposable;
 
 	protected _panel?: WebviewPanel;
 
-	protected _reactAppUri?: Uri;
-
-	public abstract readonly id: string;
-
-	public abstract readonly title: string;
-
-	public constructor(
-		protected readonly _resourceManager: ResourceManager,
-		protected readonly _context: ExtensionContext
-	) { }
-
 	public register(): void {
-		const resourcesRoot = this.getResourcesRoot();
-
 		this._viewRegistration = this._resourceManager.withDispose(
-			() => window.registerWebviewViewProvider(`gleece.${this.id}`, this)
+			() => window.registerTreeDataProvider(`gleece.${this.id}`, this)
 		);
 
 		this._panel = this._resourceManager.withDispose(
@@ -44,18 +28,12 @@ export abstract class ReactWebViewProvider implements WebviewViewProvider, Dispo
 				ViewColumn.One,
 				{
 					enableScripts: true,
-					localResourceRoots: [Uri.file(resourcesRoot)]
+					localResourceRoots: [Uri.file(this._resourcesRootPath)]
 				}
 			)
 		);
 
-		const bundledName = `${this.id}.app.js`;
-		const appPath = path.join(resourcesRoot, bundledName);
-		if (!(fse.existsSync(appPath))) {
-			throw new Error(`Path '${appPath}' does not point to a React App file`);
-		}
-
-		this._reactAppUri = this._panel.webview.asWebviewUri(Uri.file(appPath));
+		this._reactAppUri = this._panel.webview.asWebviewUri(this.getReactAppUri());
 	}
 
 	public dispose() {
@@ -83,7 +61,7 @@ export abstract class ReactWebViewProvider implements WebviewViewProvider, Dispo
 
 	protected getWebviewContent(webview: Webview) {
 		const scriptUri = webview.asWebviewUri(this._reactAppUri!);
-		const nonce = this.getNonce();
+		const nonce = this.getScriptNonce();
 
 		// <link href="${styleUri}" rel="stylesheet" />
 		return `
@@ -112,22 +90,5 @@ export abstract class ReactWebViewProvider implements WebviewViewProvider, Dispo
 					<script nonce="${nonce}" src="${scriptUri.toString()}"></script>
 				</body>
 			</html>`;
-	}
-
-	private getNonce() {
-		const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-		let nonce = '';
-		for (let i = 0; i < 32; i++) {
-			nonce += possible.charAt(Math.floor(Math.random() * possible.length));
-		}
-		return nonce;
-	}
-
-	private getResourcesRoot(): string {
-		const isDebug = process.env.NODE_ENV === 'development';
-		if (isDebug) {
-			return path.join(this._context.extensionPath, 'dist');
-		}
-		return this._context.extensionPath;
 	}
 }
