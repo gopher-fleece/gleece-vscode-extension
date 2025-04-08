@@ -4,8 +4,10 @@ import { gleeceContext } from './context/context';
 import { logger } from './logging/logger';
 
 export async function activate(context: ExtensionContext) {
+	const logPrefix: string = '[Gleece.activate]';
+
 	const start = Date.now();
-	logger.debug('Gleece Extension activating...');
+	logger.debug(`${logPrefix} Extension activating...`);
 
 	await gleeceContext.init(context);
 	context.subscriptions.push(gleeceContext);
@@ -17,18 +19,20 @@ export async function activate(context: ExtensionContext) {
 		() => {
 			if (window.activeTextEditor) {
 				gleeceContext.diagnosticsProvider.onDemandFullDiagnostics(window.activeTextEditor.document)
-					.catch((err) => logger.error('Could not analyze file', err));
+					.catch((err) => logger.error(`${logPrefix} Could not analyze file`, err));
 			}
 		},
 		500
 	);
 
-	logger.debug(`Gleece Extension activated in ${Date.now() - start}ms`);
+	logger.debug(`${logPrefix} Extension activated in ${Date.now() - start}ms`);
 }
 
 export function deactivate() {
-	logger.debug('Gleece Extension deactivating...');
+	const logPrefix: string = '[Gleece.deactivate]';
+
+	logger.debug(`${logPrefix} Extension deactivating...`);
 	const start = Date.now();
 	gleeceContext.dispose();
-	logger.debug(`Gleece Extension deactivated in ${Date.now() - start}ms`);
+	logger.debug(`${logPrefix} Extension deactivated in ${Date.now() - start}ms`);
 }

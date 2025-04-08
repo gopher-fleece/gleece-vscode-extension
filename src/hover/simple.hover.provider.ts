@@ -9,6 +9,7 @@ import {
 } from 'vscode';
 import { AttributeDescriptions, AttributeNames } from '../enums';
 import { getAnnotationProvider } from '../annotation/annotation.functional';
+import { gleeceContext } from '../context/context';
 
 export class SimpleHoverProvider implements HoverProvider {
 
@@ -18,6 +19,11 @@ export class SimpleHoverProvider implements HoverProvider {
 		position: Position,
 		_token: CancellationToken
 	): ProviderResult<Hover> {
+		if (!gleeceContext.configManager.isGleeceProject) {
+			// Not a gleece project, no need to create hovers
+			return undefined;
+		}
+
 		const line = document.lineAt(position);
 		const text = line.text.trim();
 

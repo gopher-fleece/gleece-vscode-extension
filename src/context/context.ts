@@ -128,7 +128,6 @@ class GleeceContext implements Disposable {
 		// The reasoning is that delegating disposal to the logger itself creates a cyclic dependency.
 		this._resourceManager.registerDisposable(logger);
 
-		this._configManager.registerConfigListener('analysis.enableSymbolicAwareness', this.onChangeSymbolicAwareness.bind(this));
 		const useSemanticAnalysis = this._configManager.getExtensionConfigValue('analysis.enableSymbolicAwareness') ?? false;
 		this.onChangeSymbolicAwareness({ previousValue: undefined, newValue: useSemanticAnalysis });
 
@@ -175,6 +174,13 @@ class GleeceContext implements Disposable {
 			}),
 			workspace.onDidCloseTextDocument((document) => this.diagnosticsProvider.onDocumentClosed(document))
 		);
+
+		this._configManager.registerConfigListener('analysis.enableSymbolicAwareness', this.onChangeSymbolicAwareness.bind(this));
+		this._configManager.isGleeceProjectChanged.attach((isGleeceProject) => {
+			if (isGleeceProject) {
+				this.invokeReAnalyze();
+			}
+		});
 
 		this._configManager.gleeceConfigChanged.attach(this.invokeReAnalyze.bind(this));
 	}

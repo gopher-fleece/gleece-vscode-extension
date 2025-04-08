@@ -32,8 +32,8 @@ class Logger implements Disposable {
 		window.showWarningMessage(message);
 	}
 
-	public errorPopup(message: string): void {
-		this.warn(message);
+	public errorPopup(message: string, logPrefix?: string): void {
+		this.warn(`${logPrefix ? `${logPrefix} ` : ''}${message}`);
 		window.showErrorMessage(message);
 	}
 

@@ -42,6 +42,7 @@ export class ConfigManager implements Disposable {
 
 	private _goModWatcher?: FileSystemWatcher;
 	private _isGleeceProject?: boolean;
+	private _isGleeceProjectChanged: TypedEvent<ConfigManager, boolean> = new TypedEvent();
 
 	private _gleeceConfig?: GleeceConfig;
 	private _gleeceConfigPath?: string;
@@ -54,6 +55,14 @@ export class ConfigManager implements Disposable {
 	private _registeredConfigHandlers: Map<Paths<GleeceExtensionConfig>, ExtensionConfigValueChangedEventHandler<any>[]> = new Map();
 	private _extensionConfigChanged: TypedEvent<ConfigManager, ConfigurationChangeEvent> = new TypedEvent();
 	private _extensionConfigChangedListener?: Disposable;
+
+	public get isGleeceProject(): boolean {
+		return this._isGleeceProject ?? false;
+	}
+
+	public get isGleeceProjectChanged(): ITypedEvent<ConfigManager, boolean> {
+		return this._isGleeceProjectChanged;
+	}
 
 	public get gleeceConfig(): GleeceConfig | undefined {
 		return this._gleeceConfig;
@@ -86,7 +95,7 @@ export class ConfigManager implements Disposable {
 
 	public async init() {
 		await logger.timeOperationAsync(
-			'Configuration manager initialization',
+			'[ConfigManager.init] Initialization',
 			async () => {
 				this._extensionConfig = workspace.getConfiguration(ExtensionRootNamespace);
 				await this.updateIsGleeceProject();
@@ -134,12 +143,14 @@ export class ConfigManager implements Disposable {
 	}
 
 	private async onExtensionConfigChanged(event: ConfigurationChangeEvent): Promise<void> {
+		const logPrefix: string = '[ConfigManager.onExtensionConfigChanged]';
+
 		// First, if the change affects our root, re-fetch the entire configuration
 		const oldConfig = this._extensionConfig;
 		if (event.affectsConfiguration('gleece')) {
 			// Force a reload of the configuration
 			this._extensionConfig = workspace.getConfiguration(ExtensionRootNamespace);
-			logger.debug('Extension config has been updated');
+			logger.debug(`${logPrefix} Extension config has been updated`);
 		} else {
 			// No point in continuing if our namespace hasn't changed
 			return;
@@ -157,12 +168,16 @@ export class ConfigManager implements Disposable {
 					previousValue,
 					newValue: this.getExtensionConfigValue('config.path')
 				}
-			).catch((err) => logger.error('Caught an error whilst dispatching configuration path changed event', err));
+			).catch((err) => logger.error(
+				`${logPrefix} Caught an error whilst dispatching configuration path changed event`, err)
+			);
 		}
 
 		// Then we notify the generic event listeners
 		this._extensionConfigChanged.invokeAsync(this, event, { swallowExceptions: true })
-			.catch((err) => logger.error('Caught an error whilst dispatching configuration changed event', err));
+			.catch((err) => logger.error(
+				`${logPrefix} Caught an error whilst dispatching configuration changed event`, err)
+			);
 
 
 		// Finally, we notify the specific event listeners and provide the freshly obtained config value
@@ -175,7 +190,7 @@ export class ConfigManager implements Disposable {
 					continue;
 				}
 
-				logger.debug(`Configuration section '${key}' has changed. Notifying ${changeHandlers.length} listener/s`);
+				logger.debug(`${logPrefix} Configuration section '${key}' has changed. Notifying ${changeHandlers.length} listener/s`);
 				const previousValue = oldConfig ? oldConfig.get(key) : undefined;
 				const newValue = this.getExtensionConfigValue(key);
 				for (const handler of changeHandlers) {
@@ -186,24 +201,48 @@ export class ConfigManager implements Disposable {
 
 		const results = await Promise.allSettled(dispatchPromises);
 		if (results.find((res) => res.status === 'rejected')) {
-			logger.warn('[ConfigManager.fanOutConfigChangedEvents] One or more config change notifications could not be dispatched');
+			logger.warn(`${logPrefix} One or more config change notifications could not be dispatched`);
 		}
 	}
 
 	private async updateIsGleeceProject(): Promise<void> {
+		const logPrefix: string = '[ConfigManager.updateIsGleeceProject]';
+		const prevValue = this._isGleeceProject;
+
 		const { error, data } = await this.loadFile(GoModFileName);
 		if (error) {
-			logger.warn(`Could not load go.mod - ${(error as Error)?.message ?? inspect(error)}`);
+			logger.warn(`${logPrefix} Could not load go.mod - ${(error as Error)?.message ?? inspect(error)}`);
 			this._isGleeceProject = false;
+		} else {
+			this._isGleeceProject = data?.includes(GleeceRuntimePackage) === true;
 		}
 
-		this._isGleeceProject = data?.includes(GleeceRuntimePackage) === true;
+		if (prevValue !== this._isGleeceProject) {
+			logger.info(`${logPrefix} Current workspace is ${this._isGleeceProject ? '' : 'not '}a gleece project`);
+
+			// Notify listeners project 'is gleece' status changed
+			this.dispatchGleeceProjectChanged();
+		}
+	}
+
+	private dispatchGleeceProjectChanged(): void {
+		const logPrefix: string = '[ConfigManager.dispatchGleeceProjectChanged]';
+
+		this._isGleeceProjectChanged.invokeAsync(this, this._isGleeceProject ?? false, { swallowExceptions: true })
+			.catch((err) => logger.error(
+				`${logPrefix} Caught an error whilst dispatching 'is a gleece project' changed event`, err
+			)
+			);
+
+		void this.loadGleeceConfig();
 	}
 
 	private async loadGleeceConfig(): Promise<void> {
+		const logPrefix: string = '[ConfigManager.loadGleeceConfig]';
+
 		if (!this._isGleeceProject) {
 			if (this._gleeceConfig) {
-				logger.debug('Project does not have a go.mod file but gleece.config was already read');
+				logger.debug(`${logPrefix} Project does not have a go.mod file but gleece.config was already read`);
 			}
 			return;
 		}
@@ -211,9 +250,14 @@ export class ConfigManager implements Disposable {
 		const configPath = this.getExtensionConfigValue('config.path') ?? 'gleece.config.json';
 		const { error, data } = await this.loadFile(configPath);
 		if (error) {
-			logger.errorPopup(`Failed to load configuration file: ${(error as any)?.message}`);
+			logger.errorPopup(
+				`Failed to load configuration file: ${(error as any)?.message}`,
+				logPrefix
+			);
 			return;
 		}
+
+		logger.debug(`${logPrefix} Gleece config loaded`);
 		try {
 			this._gleeceConfigPath = this.resolvePathFromWorkspace(configPath);
 			const oldConfig = this._gleeceConfig;
@@ -226,11 +270,11 @@ export class ConfigManager implements Disposable {
 						previousValue: structuredClone(oldConfig),
 						newValue: structuredClone(this._gleeceConfig)
 					}
-				).catch((err) => logger.error(`Failed to dispatch Gleece Config Changed event to one or more listeners - ${err}`));
+				).catch((err) => logger.error(`${logPrefix} Failed to dispatch Gleece Config Changed event to one or more listeners - ${err}`));
 			}
 			this._securitySchemaNames = undefined;
 		} catch (error) {
-			logger.warn(`Could not parse Gleece configuration file at '${configPath}' -  ${(error as any)?.message}`);
+			logger.warn(`${logPrefix} Could not parse Gleece configuration file at '${configPath}' -  ${(error as any)?.message}`);
 		}
 	}
 
@@ -258,6 +302,8 @@ export class ConfigManager implements Disposable {
 	}
 
 	private initGleeceConfigWatcher(): void {
+		const logPrefix: string = '[ConfigManager.initGleeceConfigWatcher]';
+
 		this._gleeceConfigWatcher?.dispose?.();
 
 		// Get the current config file path
@@ -269,21 +315,23 @@ export class ConfigManager implements Disposable {
 
 		// Listen for changes, deletions, and creations
 		this._gleeceConfigWatcher.onDidChange(async () => {
-			logger.debug('Gleece config file updated');
+			logger.debug(`${logPrefix} Gleece config file updated`);
 			await this.loadGleeceConfig();
 		});
 
 		this._gleeceConfigWatcher.onDidDelete(() => {
-			logger.debug('Gleece config file deleted');
+			logger.debug(`${logPrefix} Gleece config file deleted`);
 		});
 
 		this._gleeceConfigWatcher.onDidCreate(async () => {
-			logger.debug('Gleece config file created');
+			logger.debug(`${logPrefix} Gleece config file created`);
 			await this.loadGleeceConfig();
 		});
 	}
 
 	private initGoModWatcher(): void {
+		const logPrefix: string = '[ConfigManager.initGleeceConfigWatcher]';
+
 		this._goModWatcher?.dispose?.();
 		// Create a new watcher
 		this._goModWatcher = workspace.createFileSystemWatcher(this.resolvePathFromWorkspace(GoModFileName) ?? GoModFileName);
@@ -291,17 +339,18 @@ export class ConfigManager implements Disposable {
 		// Listen for changes, deletions, and creations
 		this._goModWatcher.onDidChange(async () => {
 			await this.updateIsGleeceProject();
-			logger.debug(`Detected go.mod update, project is ${this._isGleeceProject ? '' : 'not '}a gleece project`);
+			logger.debug(`${logPrefix} Detected go.mod update, project is ${this._isGleeceProject ? '' : 'not '}a gleece project`);
 		});
 
 		this._goModWatcher.onDidDelete(() => {
 			this._isGleeceProject = false;
-			logger.debug('Detected go.mod deletion');
+			logger.debug(`${logPrefix} Detected go.mod deletion`);
+			this.dispatchGleeceProjectChanged();
 		});
 
 		this._goModWatcher.onDidCreate(async () => {
 			await this.updateIsGleeceProject();
-			logger.debug(`Detected go.mod creation, project is ${this._isGleeceProject ? '' : 'not '}a gleece project`);
+			logger.debug(`${logPrefix} Detected go.mod creation, project is ${this._isGleeceProject ? '' : 'not '}a gleece project`);
 		});
 	}
 
