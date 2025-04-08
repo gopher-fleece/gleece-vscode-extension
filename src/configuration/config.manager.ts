@@ -9,7 +9,7 @@ import {
 } from 'vscode';
 import { ExtensionRootNamespace, GleeceExtensionConfig } from './extension.config';
 import { GleeceConfig } from './gleece.config';
-import { readFile } from 'fs-extra';
+import { readFile } from 'fs/promises';
 import { Paths, PathValue } from '../typescript/paths';
 import { logger } from '../logging/logger';
 import { ITypedEvent, TypedEvent } from 'weak-event';
