@@ -85,12 +85,17 @@ export class ConfigManager implements Disposable {
 	}
 
 	public async init() {
-		this._extensionConfig = workspace.getConfiguration(ExtensionRootNamespace);
-		await this.updateIsGleeceProject();
-		await this.loadGleeceConfig();
-		this._extensionConfigChangedListener = workspace.onDidChangeConfiguration(this.onExtensionConfigChanged.bind(this));
-		this.initGoModWatcher();
-		this.initGleeceConfigWatcher();
+		await logger.timeOperationAsync(
+			'Configuration manager initialization',
+			async () => {
+				this._extensionConfig = workspace.getConfiguration(ExtensionRootNamespace);
+				await this.updateIsGleeceProject();
+				await this.loadGleeceConfig();
+				this._extensionConfigChangedListener = workspace.onDidChangeConfiguration(this.onExtensionConfigChanged.bind(this));
+				this.initGoModWatcher();
+				this.initGleeceConfigWatcher();
+			}
+		);
 	}
 
 	public getExtensionConfigValue<TKey extends Paths<GleeceExtensionConfig>>(key: TKey): PathValue<GleeceExtensionConfig, TKey> | undefined {
@@ -285,18 +290,18 @@ export class ConfigManager implements Disposable {
 
 		// Listen for changes, deletions, and creations
 		this._goModWatcher.onDidChange(async () => {
-			logger.debug('go.mod updated');
 			await this.updateIsGleeceProject();
+			logger.debug(`Detected go.mod update, project is ${this._isGleeceProject ? '' : 'not '}a gleece project`);
 		});
 
 		this._goModWatcher.onDidDelete(() => {
-			logger.debug('go.mod deleted');
 			this._isGleeceProject = false;
+			logger.debug('Detected go.mod deletion');
 		});
 
 		this._goModWatcher.onDidCreate(async () => {
-			logger.debug('go.mod created');
 			await this.updateIsGleeceProject();
+			logger.debug(`Detected go.mod creation, project is ${this._isGleeceProject ? '' : 'not '}a gleece project`);
 		});
 	}
 
