@@ -9,11 +9,12 @@ import {
 } from 'vscode';
 import { ExtensionRootNamespace, GleeceExtensionConfig } from './extension.config';
 import { GleeceConfig } from './gleece.config';
-import { readFile } from 'fs/promises';
+import { readFile } from 'fs-extra';
 import { Paths, PathValue } from '../typescript/paths';
 import { logger } from '../logging/logger';
 import { ITypedEvent, TypedEvent } from 'weak-event';
-import { isDeepStrictEqual } from 'util';
+import { inspect, isDeepStrictEqual } from 'util';
+import { GleeceRuntimePackage, GoModFileName } from '../common.constants';
 
 export interface ExtensionConfigValueChangedEvent<TKey extends Paths<GleeceExtensionConfig>> {
 	previousValue?: PathValue<GleeceExtensionConfig, TKey>;
@@ -38,6 +39,9 @@ export interface GleeceConfigPathChangedEvent {
 
 export class ConfigManager implements Disposable {
 	private _extensionConfig?: WorkspaceConfiguration;
+
+	private _goModWatcher?: FileSystemWatcher;
+	private _isGleeceProject?: boolean;
 
 	private _gleeceConfig?: GleeceConfig;
 	private _gleeceConfigPath?: string;
@@ -82,8 +86,10 @@ export class ConfigManager implements Disposable {
 
 	public async init() {
 		this._extensionConfig = workspace.getConfiguration(ExtensionRootNamespace);
+		await this.updateIsGleeceProject();
 		await this.loadGleeceConfig();
 		this._extensionConfigChangedListener = workspace.onDidChangeConfiguration(this.onExtensionConfigChanged.bind(this));
+		this.initGoModWatcher();
 		this.initGleeceConfigWatcher();
 	}
 
@@ -179,7 +185,24 @@ export class ConfigManager implements Disposable {
 		}
 	}
 
+	private async updateIsGleeceProject(): Promise<void> {
+		const { error, data } = await this.loadFile(GoModFileName);
+		if (error) {
+			logger.warn(`Could not load go.mod - ${(error as Error)?.message ?? inspect(error)}`);
+			this._isGleeceProject = false;
+		}
+
+		this._isGleeceProject = data?.includes(GleeceRuntimePackage) === true;
+	}
+
 	private async loadGleeceConfig(): Promise<void> {
+		if (!this._isGleeceProject) {
+			if (this._gleeceConfig) {
+				logger.debug('Project does not have a go.mod file but gleece.config was already read');
+			}
+			return;
+		}
+
 		const configPath = this.getExtensionConfigValue('config.path') ?? 'gleece.config.json';
 		const { error, data } = await this.loadFile(configPath);
 		if (error) {
@@ -230,9 +253,7 @@ export class ConfigManager implements Disposable {
 	}
 
 	private initGleeceConfigWatcher(): void {
-		if (this._gleeceConfigWatcher) {
-			this._gleeceConfigWatcher.dispose();
-		}
+		this._gleeceConfigWatcher?.dispose?.();
 
 		// Get the current config file path
 		const configPath = this.getExtensionConfigValue('config.path') ?? 'gleece.config.json';
@@ -254,6 +275,28 @@ export class ConfigManager implements Disposable {
 		this._gleeceConfigWatcher.onDidCreate(async () => {
 			logger.debug('Gleece config file created');
 			await this.loadGleeceConfig();
+		});
+	}
+
+	private initGoModWatcher(): void {
+		this._goModWatcher?.dispose?.();
+		// Create a new watcher
+		this._goModWatcher = workspace.createFileSystemWatcher(this.resolvePathFromWorkspace(GoModFileName) ?? GoModFileName);
+
+		// Listen for changes, deletions, and creations
+		this._goModWatcher.onDidChange(async () => {
+			logger.debug('go.mod updated');
+			await this.updateIsGleeceProject();
+		});
+
+		this._goModWatcher.onDidDelete(() => {
+			logger.debug('go.mod deleted');
+			this._isGleeceProject = false;
+		});
+
+		this._goModWatcher.onDidCreate(async () => {
+			logger.debug('go.mod created');
+			await this.updateIsGleeceProject();
 		});
 	}
 
