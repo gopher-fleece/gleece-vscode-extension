@@ -47,11 +47,20 @@ export class GleeceDiagnosticsProvider implements Disposable {
 	}
 
 	public async onDemandFullDiagnostics(document: TextDocument): Promise<void> {
+		const logPrefix: string = '[GleeceDiagnosticsProvider.onDemandFullDiagnostic]';
+
 		if (document.languageId !== GoLangId) {
 			return;
 		}
 
+		// Keep track of the current file
 		this._currentDocument = document;
+
+		if (!gleeceContext.configManager.isGleeceProject) {
+			// Not a gleece project, don't analyze
+			return;
+		}
+
 		const start = Date.now(); // Need to define a better way than simple logs (preferably not application insights though)
 		let diagnostics: Diagnostic[];
 		const symbolicAnalysisEnabled = gleeceContext.configManager.getExtensionConfigValue('analysis.enableSymbolicAwareness');
@@ -65,8 +74,9 @@ export class GleeceDiagnosticsProvider implements Disposable {
 
 		this._diagnosticCollection.clear();
 		this._diagnosticCollection.set(document.uri, diagnostics);
+		const analysisTypeMsg = `${symbolicAnalysisEnabled ? 'with' : 'without'}`;
 		logger.debug(
-			`Full diagnostics ${symbolicAnalysisEnabled ? 'with' : 'without'} symbolic analysis performed in ${Date.now() - start}ms`
+			`${logPrefix} Full diagnostics ${analysisTypeMsg} symbolic analysis performed in ${Date.now() - start}ms`
 		);
 	}
 

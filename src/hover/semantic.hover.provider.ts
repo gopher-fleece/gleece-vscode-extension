@@ -56,6 +56,11 @@ export class SemanticHoverProvider implements HoverProvider {
 		position: Position,
 		_token: CancellationToken
 	): ProviderResult<Hover> {
+		if (!gleeceContext.configManager.isGleeceProject) {
+			// Not a gleece project, no need to create hovers
+			return undefined;
+		}
+
 		const line = document.lineAt(position);
 		const text = line.text.trim();
 
