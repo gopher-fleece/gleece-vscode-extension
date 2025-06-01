@@ -57,6 +57,11 @@ export class GolangReceiver extends GolangSymbol {
 	public getParameterNames(): string[] {
 		return this.parameters?.map((param) => param.name);
 	}
+
+	public getParameterType(name: string): string | undefined {
+		return this.parameters?.find((p) => p.name === name)?.typeName;
+	}
+
 	/**
 	 * Given a function symbol (this.symbol) and its underlying document,
 	 * extract parameter and return type information along with their document ranges.

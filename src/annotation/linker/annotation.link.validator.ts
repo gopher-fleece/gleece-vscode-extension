@@ -6,6 +6,7 @@ import { diagnosticError } from '../../diagnostics/helpers';
 import { DiagnosticCode } from '../../diagnostics/enums';
 import { getAttributeAlias, getAttributeRange } from '../annotation.functional';
 import didYouMean from 'didyoumean';
+import { logger } from '../../logging/logger';
 
 interface ClassifiedAttributes {
 	routeAttribute: Attribute | undefined;
@@ -45,6 +46,8 @@ export class AnnotationLinkValidator {
 	 * @memberof AnnotationLinkValidator
 	 */
 	public validate(): Diagnostic[] {
+		const logPrefix: string = '[AnnotationLinkValidator.validate]';
+
 		const diagnostics: Diagnostic[] = [];
 
 		const funcParamNames = new Set(this._functionSymbol.getParameterNames()); // A list of function parameters
@@ -72,6 +75,23 @@ export class AnnotationLinkValidator {
 		// 5. Ensure all function parameters are referenced
 		for (const paramName of funcParamNames) {
 			if (!seenFuncParams.has(paramName)) {
+				const pType = this._functionSymbol.getParameterType(paramName);
+
+				// This should never happen but just in case.
+				if (pType === undefined) {
+					logger.warn(
+						`${logPrefix} Could not determine type of parameter '${paramName}' in function '${this._functionSymbol.name}'`
+					);
+					continue;
+				}
+
+				// Context params may appear anywhere and do not require any annotation link
+				// Note that Gleece itself doesn't currently support import aliases for Context so
+				// neither does the extension
+				if (pType === 'context.Context') {
+					continue;
+				}
+
 				diagnostics.push(diagnosticError(
 					`Function parameter '${paramName}' is not referenced by a parameter annotation`,
 					this._functionSymbol.parameters.find((p) => p.name == paramName)!.range,
