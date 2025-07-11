@@ -81,7 +81,8 @@ export interface RoutesConfig {
 	packageName?: string; // Optional
 	customValidators?: CustomValidators[]; // Optional
 	authorizationConfig: AuthorizationConfig; // Required
-	validateResponsePayload?: boolean;
+	validateResponsePayload?: boolean; // Optional, default is false
+	skipGenerateDateComment?: boolean; // Optional, default is false
 }
 
 // AuthorizationConfig interface

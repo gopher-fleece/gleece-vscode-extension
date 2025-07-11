@@ -81,6 +81,10 @@
 				"validateResponsePayload": {
 					"description": "Verify response payload for routes with a response payload before sending the response",
 					"type": "boolean"
+				},
+				"skipGenerateDateComment": {
+					"description": "Skip generating the date comment at the top of the generated file",
+					"type": "boolean"
 				}
 			},
 			"required": [
